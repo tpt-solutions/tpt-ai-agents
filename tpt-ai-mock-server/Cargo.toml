@@ -1,0 +1,30 @@
+[package]
+name = "tpt-ai-mock-server"
+description = "Mock server for testing LLM integrations"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+documentation = "https://docs.rs/tpt-ai-mock-server"
+readme = "README.md"
+keywords = ["mock", "server", "llm", "testing", "sse"]
+categories = ["development-tools", "testing"]
+
+[dependencies]
+bytes.workspace = true
+futures = { workspace = true, features = ["alloc"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["rt", "net", "io-util", "time", "macros"] }
+
+[dev-dependencies]
+reqwest = { version = "0.12", features = ["json"] }
+
+[features]
+default = ["std", "json-sse"]
+std = []
+async = ["std"]
+json-sse = []

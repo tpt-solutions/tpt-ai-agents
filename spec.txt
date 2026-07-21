@@ -1,0 +1,26 @@
+Rank 1: tpt-ai-agents
+Why it’s #1: The AI agent gold rush is in full swing in 2026. Every company is building RAG pipelines and autonomous agents. However, the Rust ecosystem is fractured, relying on brittle Python bindings or raw, low-level HTTP calls. Rust developers building high-performance AI backends are desperate for stable, idiomatic, native Rust abstractions for LLM orchestration.
+Design Document: tpt-ai-agents
+Target Audience: Backend Rust engineers building AI infrastructure, RAG systems, and autonomous agents.
+Core Philosophy: Trait-first design, async-native, zero-copy where possible, and strict separation between transport (HTTP) and logic (Agents).
+Crate Breakdown & AI Instructions:
+tpt-llm-client-core: Unified streaming HTTP/SSE client for OpenAI, Anthropic, Ollama. AI Instruction: Implement a robust SSE parser that handles partial JSON chunks and network retries automatically.
+tpt-vector-store-traits: Standardized async traits for Qdrant, Milvus, pgvector. AI Instruction: Define the traits using generic associated types (GATs) to handle different distance metrics and payload types without boxing.
+tpt-rag-pipeline: Chunking, embedding batching, and context-window management. AI Instruction: Build a streaming chunker that respects token limits (using tpt-tokenizers-fast) and handles overlapping windows.
+tpt-tool-use-macros: Proc macros to expose Rust functions as LLM tools. AI Instruction: Generate JSON schemas from Rust function signatures and handle automatic serialization/deserialization of tool arguments.
+tpt-prompt-template: Safe, typed templating for prompts. AI Instruction: Use compile-time validation for template variables to prevent runtime injection errors.
+tpt-onnx-runtime-utils: High-level wrappers for local ONNX inference. AI Instruction: Focus on zero-copy tensor passing between the Rust host and the ONNX runtime to minimize latency.
+tpt-tokenizers-fast: Lightweight, no_std compatible BPE/SentencePiece tokenization. AI Instruction: Optimize for edge deployment; avoid heavy allocations in the hot path.
+tpt-agent-memory: In-memory and persistent graph/vector memory for multi-turn state. AI Instruction: Implement a concurrent, thread-safe memory store that supports semantic search and temporal decay.
+tpt-eval-harness: Tools for running LLM eval datasets deterministically. AI Instruction: Build a parallel execution engine that tracks token usage, latency, and scores outputs against ground truth.
+tpt-ai-mock-server: Mock server for testing LLM integrations. AI Instruction: Create a lightweight HTTP server that serves pre-recorded SSE streams and validates incoming request schemas.
+
+
+Architectural Constraints & Feature Flags:
+no_std Compatibility: For core logic crates (especially in AI, Wasm, Security, and Resilience), the default lib.rs must be #![no_std]. Use extern crate alloc; for heap allocations.
+Feature Gating: Use feature flags to gate heavier dependencies. The default features should be minimal.
+Use a std feature flag to enable standard library features (I/O, networking, threading).
+Use an async or tokio feature flag to pull in async runtimes.
+Use a serde feature flag to derive serialization traits.
+Conditional Compilation: Use #[cfg(feature = "std")] and #[cfg(not(feature = "std"))] cleanly. Do not use std types (like std::io::Error) in the core no_std logic; use core:: equivalents or define custom error enums.
+Exceptions: Do not apply no_std to crates that inherently require host I/O or depend on std-only ecosystems (specifically: tpt-testcontainers-ext, tpt-fixture-loader, tpt-polars-ext, and tpt-delta-lake-rs). Those should be strictly std.

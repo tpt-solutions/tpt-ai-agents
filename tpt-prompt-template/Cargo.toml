@@ -1,0 +1,22 @@
+[package]
+name = "tpt-prompt-template"
+description = "Safe, typed templating for prompts with compile-time validation"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+documentation = "https://docs.rs/tpt-prompt-template"
+readme = "README.md"
+keywords = ["template", "prompt", "llm", "compile-time", "typed"]
+categories = ["text-processing", "parsing"]
+
+[dependencies]
+thiserror.workspace = true
+
+[features]
+default = ["std", "json-sse"]
+std = []
+async = ["std"]
+json-sse = []

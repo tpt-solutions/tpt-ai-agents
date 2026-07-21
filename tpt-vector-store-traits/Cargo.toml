@@ -1,0 +1,26 @@
+[package]
+name = "tpt-vector-store-traits"
+description = "Standardized async traits for Qdrant, Milvus, pgvector"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+documentation = "https://docs.rs/tpt-vector-store-traits"
+readme = "README.md"
+keywords = ["vector", "embedding", "qdrant", "milvus", "pgvector"]
+categories = ["database", "asynchronous"]
+
+[dependencies]
+async-trait.workspace = true
+bytes.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[features]
+default = ["std", "json-sse"]
+std = []
+async = ["std"]
+json-sse = []

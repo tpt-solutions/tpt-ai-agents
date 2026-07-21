@@ -1,0 +1,35 @@
+[package]
+name = "tpt-eval-harness"
+description = "Tools for running LLM eval datasets deterministically"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+documentation = "https://docs.rs/tpt-eval-harness"
+readme = "README.md"
+keywords = ["eval", "benchmark", "llm", "harness", "testing"]
+categories = ["development-tools", "asynchronous"]
+
+[dependencies]
+async-trait.workspace = true
+bytes.workspace = true
+futures.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["rt", "time", "macros"] }
+
+[dependencies.tpt-llm-client-core]
+path = "../tpt-llm-client-core"
+optional = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros", "rt-multi-thread"] }
+
+[features]
+default = ["std", "json-sse"]
+std = ["tpt-llm-client-core?/std"]
+async = ["std"]
+json-sse = ["tpt-llm-client-core?/json-sse"]

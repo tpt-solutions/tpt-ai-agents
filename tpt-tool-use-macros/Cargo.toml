@@ -1,0 +1,27 @@
+[package]
+name = "tpt-tool-use-macros"
+description = "Proc macros exposing Rust functions as LLM tools"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+documentation = "https://docs.rs/tpt-tool-use-macros"
+readme = "README.md"
+keywords = ["proc-macro", "llm", "tool", "json-schema", "ai"]
+categories = ["development-tools", "encoding"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2", features = ["full", "extra-traits"] }
+quote = "1"
+proc-macro2 = "1"
+serde_json.workspace = true
+
+[dev-dependencies]
+trybuild = "1"
+serde.workspace = true
+serde_json.workspace = true

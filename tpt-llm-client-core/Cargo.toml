@@ -1,0 +1,43 @@
+[package]
+name = "tpt-llm-client-core"
+description = "Unified streaming HTTP/SSE client for OpenAI, Anthropic, Ollama"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+documentation = "https://docs.rs/tpt-llm-client-core"
+readme = "README.md"
+keywords = ["llm", "sse", "openai", "anthropic", "streaming"]
+categories = ["asynchronous", "network-programming"]
+
+[dependencies]
+bytes.workspace = true
+futures = { workspace = true, features = ["alloc"] }
+pin-project-lite.workspace = true
+serde.workspace = true
+serde_json = { workspace = true, features = ["alloc"] }
+thiserror.workspace = true
+
+[dependencies.tokio]
+workspace = true
+optional = true
+features = ["rt", "time", "macros"]
+
+[dependencies.reqwest]
+version = "0.12"
+optional = true
+default-features = false
+features = ["json", "stream"]
+
+[dependencies.tpt-prompt-template]
+path = "../tpt-prompt-template"
+optional = true
+
+[features]
+default = ["std", "json-sse"]
+std = ["tokio", "reqwest", "futures/std"]
+async = ["std"]
+json-sse = []
+tool-use = ["tpt-prompt-template"]

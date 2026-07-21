@@ -1,0 +1,87 @@
+use crate::Error;
+
+/// Template parser that extracts variables from template strings.
+pub struct TemplateParser {
+    variables: alloc::vec::Vec<alloc::string::String>,
+}
+
+impl TemplateParser {
+    pub fn new() -> Self {
+        Self {
+            variables: alloc::vec::Vec::new(),
+        }
+    }
+
+    pub fn parse(&mut self, template: &str) -> core::result::Result<(), Error> {
+        self.variables.clear();
+        let mut chars = template.char_indices().peekable();
+
+        while let Some((i, c)) = chars.next() {
+            if c == '{' {
+                if chars.peek() == Some(&(i + 1, '{')) {
+                    chars.next();
+                    let start = i + 2;
+                    let mut end = start;
+                    while let Some(&(pos, ch)) = chars.peek() {
+                        if ch == '}' {
+                            if chars.peek() == Some(&(pos + 1, '}')) {
+                                chars.next();
+                                chars.next();
+                                let var_name = &template[start..end];
+                                if var_name.is_empty() {
+                                    return Err(Error::UnclosedVariable { position: start });
+                                }
+                                if !var_name
+                                    .chars()
+                                    .all(|c| c.is_alphanumeric() || c == '_')
+                                {
+                                    return Err(Error::InvalidVariableName(
+                                        alloc::string::String::from(var_name),
+                                    ));
+                                }
+                                self.variables
+                                    .push(alloc::string::String::from(var_name));
+                                break;
+                            }
+                        }
+                        end = pos + 1;
+                        chars.next();
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn variables(&self) -> &[alloc::string::String] {
+        &self.variables
+    }
+}
+
+impl Default for TemplateParser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_variables() {
+        let mut parser = TemplateParser::new();
+        parser
+            .parse("Hello {{name}}, your topic is {{topic}}")
+            .unwrap();
+        assert_eq!(parser.variables(), &["name", "topic"]);
+    }
+
+    #[test]
+    fn test_empty_template() {
+        let mut parser = TemplateParser::new();
+        parser.parse("Hello world").unwrap();
+        assert!(parser.variables().is_empty());
+    }
+}

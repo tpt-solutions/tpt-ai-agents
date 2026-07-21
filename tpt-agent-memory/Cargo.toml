@@ -1,0 +1,34 @@
+[package]
+name = "tpt-agent-memory"
+description = "In-memory and persistent graph/vector memory for multi-turn state"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+documentation = "https://docs.rs/tpt-agent-memory"
+readme = "README.md"
+keywords = ["agent", "memory", "graph", "vector", "multi-turn"]
+categories = ["data-structures", "asynchronous"]
+
+[dependencies]
+async-trait.workspace = true
+bytes.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["rt", "sync", "macros"] }
+
+[dependencies.tpt-vector-store-traits]
+path = "../tpt-vector-store-traits"
+optional = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros", "rt-multi-thread"] }
+
+[features]
+default = ["std", "json-sse"]
+std = ["tpt-vector-store-traits?/std"]
+async = ["std"]
+json-sse = ["tpt-vector-store-traits?/json-sse"]
