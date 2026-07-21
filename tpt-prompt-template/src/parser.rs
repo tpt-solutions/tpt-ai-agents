@@ -24,9 +24,9 @@ impl TemplateParser {
                     let mut end = start;
                     while let Some(&(pos, ch)) = chars.peek() {
                         if ch == '}' {
+                            chars.next(); // consume first '}'
                             if chars.peek() == Some(&(pos + 1, '}')) {
-                                chars.next();
-                                chars.next();
+                                chars.next(); // consume second '}'
                                 let var_name = &template[start..end];
                                 if var_name.is_empty() {
                                     return Err(Error::UnclosedVariable { position: start });

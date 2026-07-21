@@ -1,0 +1,14 @@
+# tpt-onnx-runtime-utils
+
+[![crates.io](https://img.shields.io/crates/v/tpt-onnx-runtime-utils.svg)](https://crates.io/crates/tpt-onnx-runtime-utils)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](../LICENSE-MIT)
+
+High-level wrappers for local ONNX inference with zero-copy tensor passing.
+
+## Features
+
+- `std` (default): Enables standard library features
+
+## License
+
+Dual-licensed under [MIT](../LICENSE-MIT) and [Apache-2.0](../LICENSE-APACHE).
