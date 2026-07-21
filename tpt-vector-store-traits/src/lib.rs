@@ -11,20 +11,13 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
-//! use tpt_vector_store_traits::{VectorStore, Query, SearchResult};
+//! ```
+//! use tpt_vector_store_traits::{CosineDistance, Distance, SearchResult};
 //!
-//! struct QdrantStore { /* ... */ }
-//!
-//! impl VectorStore for QdrantStore {
-//!     type Error = QdrantError;
-//!     type Distance = CosineDistance;
-//!     type Payload = serde_json::Value;
-//!
-//!     async fn search(&self, query: &Query) -> Result<Vec<SearchResult<Self::Payload>>, Self::Error> {
-//!         todo!()
-//!     }
-//! }
+//! let result = SearchResult::<()>::new("doc1", 0.95);
+//! assert_eq!(result.id, "doc1");
+//! let d = CosineDistance;
+//! assert_eq!(d.name(), "cosine");
 //! ```
 #![no_std]
 

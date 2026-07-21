@@ -10,15 +10,16 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
-//! use tpt_eval_harness::{EvalHarness, EvalConfig};
+//! ```
+//! use tpt_eval_harness::{EvalHarness, EvalConfig, EvalSample};
 //!
-//! #[tokio::main]
-//! async fn main() {
-//!     let harness = EvalHarness::new(EvalConfig::default());
-//!     let results = harness.run("eval_dataset.jsonl").await.unwrap();
-//!     println!("Accuracy: {}", results.accuracy());
-//! }
+//! let harness = EvalHarness::new(EvalConfig::default());
+//! let samples = vec![
+//!     EvalSample::new("What is 2+2?", "4", "4"),
+//!     EvalSample::new("Capital of France?", "Paris", "Lyon"),
+//! ];
+//! let metrics = harness.run(&samples);
+//! assert_eq!(metrics.correct, 1);
 //! ```
 #![no_std]
 

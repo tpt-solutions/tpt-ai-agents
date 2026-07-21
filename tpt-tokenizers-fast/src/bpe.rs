@@ -4,7 +4,6 @@ use alloc::collections::BTreeMap;
 /// BPE tokenizer.
 pub struct BpeTokenizer {
     vocab: Vocabulary,
-    #[allow(dead_code)]
     merges: BTreeMap<(TokenId, TokenId), TokenId>,
 }
 
@@ -14,14 +13,49 @@ impl BpeTokenizer {
     }
 
     pub fn encode(&self, text: &str) -> core::result::Result<alloc::vec::Vec<Token>, Error> {
-        let mut tokens = alloc::vec::Vec::new();
+        // Start from per-character symbols, then greedily apply the learned
+        // merges in priority order (lowest merged-id first == earliest-learned
+        // merge first), same strategy as the reference BPE algorithm.
+        let mut symbols: alloc::vec::Vec<TokenId> = alloc::vec::Vec::new();
         for ch in text.chars() {
             let char_str = alloc::string::String::from(ch);
-            if let Some(id) = self.vocab.get_id(&char_str) {
-                tokens.push(Token::new(id, &char_str));
-            } else {
-                return Err(Error::UnknownToken(char_str));
+            match self.vocab.get_id(&char_str) {
+                Some(id) => symbols.push(id),
+                None => return Err(Error::UnknownToken(char_str)),
             }
+        }
+
+        loop {
+            // Find the adjacent pair with the lowest merge rank (earliest-learned merge).
+            let mut best: Option<(usize, TokenId)> = None;
+            for i in 0..symbols.len().saturating_sub(1) {
+                if let Some(&merged_id) = self.merges.get(&(symbols[i], symbols[i + 1])) {
+                    let better = match best {
+                        Some((_, current_best)) => merged_id < current_best,
+                        None => true,
+                    };
+                    if better {
+                        best = Some((i, merged_id));
+                    }
+                }
+            }
+
+            match best {
+                Some((i, merged_id)) => {
+                    symbols[i] = merged_id;
+                    symbols.remove(i + 1);
+                }
+                None => break,
+            }
+        }
+
+        let mut tokens = alloc::vec::Vec::with_capacity(symbols.len());
+        for id in symbols {
+            let text = self
+                .vocab
+                .get_token(id)
+                .ok_or_else(|| Error::Encoding(alloc::format!("no vocab entry for merged token id {id}")))?;
+            tokens.push(Token::new(id, text));
         }
         Ok(tokens)
     }
@@ -65,6 +99,39 @@ mod tests {
         assert_eq!(tokens[0].text, "h");
         assert_eq!(tokens[1].text, "e");
         assert_eq!(tokens[2].text, "l");
+    }
+
+    #[test]
+    fn test_encode_applies_merges() {
+        // "l" + "o" merges into "lo" (id 5), then "lo" + " " does not merge further.
+        let mut vocab = simple_vocab();
+        vocab.insert("lo", 5);
+        let mut merges = BTreeMap::new();
+        merges.insert((2, 3), 5); // (l, o) -> lo
+
+        let tok = BpeTokenizer::new(vocab, merges);
+        let tokens = tok.encode("lo").unwrap();
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens[0].id, 5);
+        assert_eq!(tokens[0].text, "lo");
+    }
+
+    #[test]
+    fn test_encode_applies_merges_in_priority_order() {
+        // Merges are applied in lowest-merged-id-first order: (h,e)->5 is
+        // learned before (e,l)->6, so "hel" should merge to "he"+"l", not "h"+"el".
+        let mut vocab = simple_vocab();
+        vocab.insert("he", 5);
+        vocab.insert("el", 6);
+        let mut merges = BTreeMap::new();
+        merges.insert((0, 1), 5); // (h, e) -> he
+        merges.insert((1, 2), 6); // (e, l) -> el
+
+        let tok = BpeTokenizer::new(vocab, merges);
+        let tokens = tok.encode("hel").unwrap();
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(tokens[0].text, "he");
+        assert_eq!(tokens[1].text, "l");
     }
 
     #[test]

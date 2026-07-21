@@ -33,6 +33,7 @@ features = ["json", "stream"]
 
 [dependencies.tpt-prompt-template]
 path = "../tpt-prompt-template"
+version = "0.1.0"
 optional = true
 
 [features]

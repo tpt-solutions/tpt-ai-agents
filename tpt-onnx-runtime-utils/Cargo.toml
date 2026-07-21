@@ -16,8 +16,15 @@ categories = ["machine-learning", "memory-management"]
 bytes.workspace = true
 thiserror.workspace = true
 
+[dependencies.tract-onnx]
+version = "0.21"
+optional = true
+
+[dev-dependencies]
+prost = "0.11"
+
 [features]
 default = ["std", "json-sse"]
-std = []
+std = ["dep:tract-onnx"]
 async = ["std"]
 json-sse = []

@@ -66,6 +66,7 @@ impl EvalSample {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec;
 
     #[test]
     fn test_eval_harness() {

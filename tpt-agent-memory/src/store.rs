@@ -4,7 +4,11 @@ use alloc::vec::Vec;
 
 use crate::{MemoryEntry, SearchQuery};
 
-/// Concurrent, thread-safe memory store.
+/// In-memory key-value store for memory entries.
+///
+/// Not thread-safe by itself (plain `BTreeMap` behind `&mut self`). For
+/// concurrent access from multiple threads, use [`crate::ConcurrentMemoryStore`]
+/// (requires the `std` feature), which wraps this type in `Arc<RwLock<..>>`.
 pub struct MemoryStore {
     entries: BTreeMap<String, MemoryEntry>,
 }

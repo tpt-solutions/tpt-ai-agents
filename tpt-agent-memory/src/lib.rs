@@ -10,11 +10,12 @@
 //! # Example
 //!
 //! ```
-//! use tpt_agent_memory::{MemoryStore, MemoryEntry};
+//! use tpt_agent_memory::{MemoryStore, MemoryEntry, SearchQuery};
 //!
 //! let mut store = MemoryStore::new();
-//! store.insert(MemoryEntry::new("user_prefers_dark_mode", &["pref"]));
-//! let results = store.search("dark mode");
+//! store.insert(MemoryEntry::new("user prefers dark mode", &["pref"]));
+//! let query = SearchQuery::new("dark mode");
+//! let results = store.search(&query);
 //! assert_eq!(results.len(), 1);
 //! ```
 #![no_std]
@@ -24,6 +25,8 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
+#[cfg(feature = "std")]
+mod concurrent;
 mod decay;
 mod entry;
 mod error;
@@ -31,6 +34,8 @@ mod graph;
 mod search;
 mod store;
 
+#[cfg(feature = "std")]
+pub use concurrent::ConcurrentMemoryStore;
 pub use decay::TemporalDecay;
 pub use entry::MemoryEntry;
 pub use error::Error;

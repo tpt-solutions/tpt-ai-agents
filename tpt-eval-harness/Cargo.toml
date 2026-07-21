@@ -23,6 +23,7 @@ tokio = { workspace = true, features = ["rt", "time", "macros"] }
 
 [dependencies.tpt-llm-client-core]
 path = "../tpt-llm-client-core"
+version = "0.1.0"
 optional = true
 
 [dev-dependencies]

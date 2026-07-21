@@ -13,15 +13,20 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use tpt_llm_client_core::SseClient;
+//! use tpt_llm_client_core::{SseClient, ChatRequest, Message, Role};
 //!
 //! #[tokio::main]
 //! async fn main() {
 //!     let client = SseClient::openai("https://api.openai.com/v1", "sk-...");
-//!     let mut stream = client.chat_completion("Hello").await.unwrap();
-//!     while let Some(chunk) = stream.next().await {
-//!         println!("{:?}", chunk);
-//!     }
+//!     let request = ChatRequest {
+//!         model: "gpt-4o-mini".into(),
+//!         messages: vec![Message { role: Role::User, content: "Hello".into() }],
+//!         temperature: None,
+//!         max_tokens: None,
+//!         stream: None,
+//!     };
+//!     let response = client.send(&request).await.unwrap();
+//!     println!("{:?}", response);
 //! }
 //! ```
 #![no_std]
@@ -33,6 +38,8 @@ extern crate std;
 
 mod error;
 mod event;
+#[cfg(feature = "std")]
+mod http;
 mod parser;
 mod request;
 mod response;
@@ -46,12 +53,10 @@ pub use response::{ChatResponse, StreamChunk};
 /// SSE streaming client for LLM APIs.
 #[cfg(feature = "std")]
 pub struct SseClient {
-    #[allow(dead_code)]
     base_url: alloc::string::String,
-    #[allow(dead_code)]
     api_key: alloc::string::String,
-    #[allow(dead_code)]
     provider: Provider,
+    http: reqwest::Client,
 }
 
 /// Supported LLM providers.
@@ -69,6 +74,7 @@ impl SseClient {
             base_url: alloc::string::String::from(base_url),
             api_key: alloc::string::String::from(api_key),
             provider: Provider::OpenAi,
+            http: reqwest::Client::new(),
         }
     }
 
@@ -77,6 +83,7 @@ impl SseClient {
             base_url: alloc::string::String::from(base_url),
             api_key: alloc::string::String::from(api_key),
             provider: Provider::Anthropic,
+            http: reqwest::Client::new(),
         }
     }
 
@@ -85,7 +92,22 @@ impl SseClient {
             base_url: alloc::string::String::from(base_url),
             api_key: alloc::string::String::new(),
             provider: Provider::Ollama,
+            http: reqwest::Client::new(),
         }
+    }
+
+    /// Send a non-streaming chat completion request.
+    pub async fn send(&self, request: &ChatRequest) -> Result<ChatResponse> {
+        http::send(&self.http, &self.base_url, &self.api_key, self.provider, request).await
+    }
+
+    /// Send a streaming chat completion request, returning a stream of
+    /// unified [`StreamChunk`] items as they arrive from the provider.
+    pub async fn stream(
+        &self,
+        request: &ChatRequest,
+    ) -> Result<impl futures::Stream<Item = Result<StreamChunk>>> {
+        http::stream(&self.http, &self.base_url, &self.api_key, self.provider, request).await
     }
 }
 

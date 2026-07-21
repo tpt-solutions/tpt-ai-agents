@@ -29,6 +29,20 @@ Thanks for your interest in contributing!
 - Ensure CI passes
 - Update `CHANGELOG.md` for user-facing changes
 
+## Adding a New Crate
+
+1. Create the crate directory: `cargo new --lib tpt-<name>`
+2. Add to `Cargo.toml` workspace `members` list
+3. Required `Cargo.toml` fields:
+   - `name`, `description`, `version = "0.1.0"`
+   - `edition.workspace = true`, `license.workspace = true`, `repository.workspace = true`
+   - `readme = "README.md"`, `keywords` (≤5), `categories` (valid crates.io slugs)
+4. In `lib.rs`: start with `#![no_std]`, `extern crate alloc;`, feature flags for `std`/`async`
+5. Create `README.md`, `CHANGELOG.md` (Keep a Changelog format)
+6. Add unit tests; doctests should compile and pass
+7. Run `cargo clippy --all-features --all-targets -D warnings` and `cargo fmt --check`
+8. Determine publish tier (0 = no internal deps, 1+ = depends on lower tiers)
+
 ## License
 
 By contributing, you agree that your contributions will be dual-licensed under MIT and Apache-2.0.

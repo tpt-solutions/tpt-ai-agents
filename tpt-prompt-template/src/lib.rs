@@ -10,18 +10,13 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
-//! use tpt_prompt_template::template;
+//! ```
+//! use tpt_prompt_template::PromptTemplate;
 //!
-//! const SYSTEM_PROMPT: &str = template!(
-//!     "You are a helpful assistant. User name: {{name}}, topic: {{topic}}"
-//! );
-//!
-//! fn render(name: &str, topic: &str) -> String {
-//!     SYSTEM_PROMPT
-//!         .replace("{{name}}", name)
-//!         .replace("{{topic}}", topic)
-//! }
+//! let tmpl = PromptTemplate::new("Hello {{name}}, topic: {{topic}}").unwrap();
+//! assert_eq!(tmpl.variables().len(), 2);
+//! let rendered = tmpl.render(&[("name", "Alice"), ("topic", "Rust")]);
+//! assert!(rendered.contains("Alice"));
 //! ```
 #![no_std]
 

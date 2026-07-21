@@ -24,14 +24,17 @@ tokio = { workspace = true, features = ["rt", "macros"] }
 
 [dependencies.tpt-tokenizers-fast]
 path = "../tpt-tokenizers-fast"
+version = "0.1.0"
 optional = true
 
 [dependencies.tpt-vector-store-traits]
 path = "../tpt-vector-store-traits"
+version = "0.1.0"
 optional = true
 
 [dependencies.tpt-llm-client-core]
 path = "../tpt-llm-client-core"
+version = "0.1.0"
 optional = true
 
 [dev-dependencies]

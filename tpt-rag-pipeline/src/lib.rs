@@ -11,12 +11,13 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use tpt_rag_pipeline::{Chunker, ChunkConfig};
 //!
-//! let config = ChunkConfig::new(512, 50);
-//! let mut chunker = Chunker::new(config);
-//! let chunks = chunker.chunk("Your long document text here...").unwrap();
+//! let config = ChunkConfig::new(10, 2);
+//! let chunker = Chunker::new(config);
+//! let chunks = chunker.chunk("one two three four five six seven eight nine ten").unwrap();
+//! assert!(chunks.len() > 1);
 //! ```
 #![no_std]
 

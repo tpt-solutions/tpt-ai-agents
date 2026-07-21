@@ -1,11 +1,14 @@
 //! High-level wrappers for local ONNX inference.
 //!
-//! Provides zero-copy tensor passing between the Rust host and ONNX runtime
-//! to minimize latency.
+//! With the `std` feature (enabled by default), inference is powered by the
+//! pure-Rust [`tract-onnx`](https://docs.rs/tract-onnx) engine — no system
+//! ONNX Runtime installation or C toolchain required. Without `std`, model
+//! loading only records the path and `Session::run` returns an error, since
+//! `tract-onnx` itself requires the standard library.
 //!
 //! # Features
 //!
-//! - `std` (default): Enables standard library features
+//! - `std` (default): Enables real ONNX inference via `tract-onnx`
 //! - `async`: Alias for `std`
 //!
 //! # Example
