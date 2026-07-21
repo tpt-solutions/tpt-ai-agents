@@ -1,7 +1,6 @@
 //! In-memory and persistent graph/vector memory for multi-turn state.
 //!
-//! Provides a concurrent, thread-safe memory store with semantic search
-//! and temporal decay support.
+//! Provides a memory store with semantic search and temporal decay support.
 //!
 //! # Features
 //!
@@ -10,15 +9,13 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use tpt_agent_memory::{MemoryStore, MemoryEntry};
 //!
-//! #[tokio::main]
-//! async fn main() {
-//!     let store = MemoryStore::new();
-//!     store.insert(MemoryEntry::new("user_prefers_dark_mode", &[])).await;
-//!     let results = store.search("dark mode").await;
-//! }
+//! let mut store = MemoryStore::new();
+//! store.insert(MemoryEntry::new("user_prefers_dark_mode", &["pref"]));
+//! let results = store.search("dark mode");
+//! assert_eq!(results.len(), 1);
 //! ```
 #![no_std]
 

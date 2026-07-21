@@ -46,8 +46,11 @@ pub use response::{ChatResponse, StreamChunk};
 /// SSE streaming client for LLM APIs.
 #[cfg(feature = "std")]
 pub struct SseClient {
+    #[allow(dead_code)]
     base_url: alloc::string::String,
+    #[allow(dead_code)]
     api_key: alloc::string::String,
+    #[allow(dead_code)]
     provider: Provider,
 }
 

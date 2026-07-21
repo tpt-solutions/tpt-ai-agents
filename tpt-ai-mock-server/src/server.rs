@@ -1,4 +1,4 @@
-use crate::{Error, RecordedResponse, router::Router};
+use crate::{RecordedResponse, router::Router};
 
 /// Mock LLM server for testing.
 pub struct MockServer {
@@ -21,13 +21,14 @@ impl MockServer {
     }
 
     #[cfg(feature = "std")]
-    pub async fn start(&mut self) -> Result<std::net::SocketAddr, Error> {
+    pub async fn start(&mut self) -> Result<std::net::SocketAddr, crate::Error> {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
         let addr = listener.local_addr()?;
         self.addr = Some(addr);
         Ok(addr)
     }
 
+    #[cfg(feature = "std")]
     pub fn addr(&self) -> Option<std::net::SocketAddr> {
         self.addr
     }

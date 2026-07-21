@@ -4,6 +4,7 @@ use alloc::collections::BTreeMap;
 /// BPE tokenizer.
 pub struct BpeTokenizer {
     vocab: Vocabulary,
+    #[allow(dead_code)]
     merges: BTreeMap<(TokenId, TokenId), TokenId>,
 }
 
@@ -39,5 +40,55 @@ impl BpeTokenizer {
 
     pub fn vocab_size(&self) -> usize {
         self.vocab.size()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn simple_vocab() -> Vocabulary {
+        let mut v = Vocabulary::new();
+        v.insert("h", 0);
+        v.insert("e", 1);
+        v.insert("l", 2);
+        v.insert("o", 3);
+        v.insert(" ", 4);
+        v
+    }
+
+    #[test]
+    fn test_encode() {
+        let tok = BpeTokenizer::new(simple_vocab(), BTreeMap::new());
+        let tokens = tok.encode("hel").unwrap();
+        assert_eq!(tokens.len(), 3);
+        assert_eq!(tokens[0].text, "h");
+        assert_eq!(tokens[1].text, "e");
+        assert_eq!(tokens[2].text, "l");
+    }
+
+    #[test]
+    fn test_encode_unknown_token() {
+        let tok = BpeTokenizer::new(simple_vocab(), BTreeMap::new());
+        assert!(tok.encode("x").is_err());
+    }
+
+    #[test]
+    fn test_decode() {
+        let tok = BpeTokenizer::new(simple_vocab(), BTreeMap::new());
+        let decoded = tok.decode(&[0, 1, 2]).unwrap();
+        assert_eq!(decoded, "hel");
+    }
+
+    #[test]
+    fn test_decode_unknown_id() {
+        let tok = BpeTokenizer::new(simple_vocab(), BTreeMap::new());
+        assert!(tok.decode(&[99]).is_err());
+    }
+
+    #[test]
+    fn test_vocab_size() {
+        let tok = BpeTokenizer::new(simple_vocab(), BTreeMap::new());
+        assert_eq!(tok.vocab_size(), 5);
     }
 }

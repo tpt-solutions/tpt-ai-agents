@@ -36,7 +36,7 @@ mod scoring;
 
 pub use config::EvalConfig;
 pub use error::Error;
-pub use evaluator::EvalHarness;
+pub use evaluator::{EvalHarness, EvalSample};
 pub use executor::ParallelExecutor;
 pub use metrics::{EvalMetrics, TokenUsage};
 pub use scoring::{Score, Scorer};

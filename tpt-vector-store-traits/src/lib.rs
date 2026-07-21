@@ -81,3 +81,36 @@ impl Distance for DotProductDistance {
 
 /// Re-export for convenience.
 pub type Result<T> = core::result::Result<T, Error>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_distance_metrics() {
+        assert_eq!(CosineDistance.name(), "cosine");
+        assert_eq!(EuclideanDistance.name(), "euclid");
+        assert_eq!(DotProductDistance.name(), "dot");
+    }
+
+    #[test]
+    fn test_query_default_limit() {
+        let q = Query {
+            vector: alloc::vec![1.0, 2.0, 3.0],
+            filter: None,
+            limit: 10,
+            offset: None,
+            include_payload: None,
+        };
+        assert_eq!(q.limit, 10);
+    }
+
+    #[test]
+    fn test_search_result() {
+        let r = SearchResult::<()>::new("doc1", 0.95);
+        assert_eq!(r.id, "doc1");
+        assert!((r.score - 0.95).abs() < 0.001);
+        assert!(r.vector.is_none());
+        assert!(r.payload.is_none());
+    }
+}

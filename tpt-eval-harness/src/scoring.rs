@@ -11,6 +11,7 @@ pub trait Scorer {
 }
 
 /// Exact match scorer.
+#[allow(dead_code)]
 pub struct ExactMatchScorer;
 
 impl Scorer for ExactMatchScorer {
@@ -28,6 +29,7 @@ impl Scorer for ExactMatchScorer {
 }
 
 /// Contains match scorer.
+#[allow(dead_code)]
 pub struct ContainsScorer;
 
 impl Scorer for ContainsScorer {

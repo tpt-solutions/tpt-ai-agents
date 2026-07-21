@@ -5,6 +5,7 @@ pub struct Router {
     routes: alloc::vec::Vec<Route>,
 }
 
+#[allow(dead_code)]
 struct Route {
     path: alloc::string::String,
     response: RecordedResponse,
@@ -24,6 +25,7 @@ impl Router {
         });
     }
 
+    #[allow(dead_code)]
     pub fn find(&self, path: &str) -> Option<&RecordedResponse> {
         self.routes.iter().find(|r| r.path == path).map(|r| &r.response)
     }

@@ -1,6 +1,7 @@
 use crate::Error;
 
 /// Validate an incoming request schema.
+#[allow(dead_code)]
 pub fn validate_request(body: &str) -> core::result::Result<(), Error> {
     let parsed: core::result::Result<serde_json::Value, _> = serde_json::from_str(body);
     match parsed {

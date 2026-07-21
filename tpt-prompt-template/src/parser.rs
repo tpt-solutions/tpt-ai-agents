@@ -17,36 +17,34 @@ impl TemplateParser {
         let mut chars = template.char_indices().peekable();
 
         while let Some((i, c)) = chars.next() {
-            if c == '{' {
-                if chars.peek() == Some(&(i + 1, '{')) {
-                    chars.next();
-                    let start = i + 2;
-                    let mut end = start;
-                    while let Some(&(pos, ch)) = chars.peek() {
-                        if ch == '}' {
-                            chars.next(); // consume first '}'
-                            if chars.peek() == Some(&(pos + 1, '}')) {
-                                chars.next(); // consume second '}'
-                                let var_name = &template[start..end];
-                                if var_name.is_empty() {
-                                    return Err(Error::UnclosedVariable { position: start });
-                                }
-                                if !var_name
-                                    .chars()
-                                    .all(|c| c.is_alphanumeric() || c == '_')
-                                {
-                                    return Err(Error::InvalidVariableName(
-                                        alloc::string::String::from(var_name),
-                                    ));
-                                }
-                                self.variables
-                                    .push(alloc::string::String::from(var_name));
-                                break;
+            if c == '{' && chars.peek() == Some(&(i + 1, '{')) {
+                chars.next();
+                let start = i + 2;
+                let mut end = start;
+                while let Some(&(pos, ch)) = chars.peek() {
+                    if ch == '}' {
+                        chars.next(); // consume first '}'
+                        if chars.peek() == Some(&(pos + 1, '}')) {
+                            chars.next(); // consume second '}'
+                            let var_name = &template[start..end];
+                            if var_name.is_empty() {
+                                return Err(Error::UnclosedVariable { position: start });
                             }
+                            if !var_name
+                                .chars()
+                                .all(|c| c.is_alphanumeric() || c == '_')
+                            {
+                                return Err(Error::InvalidVariableName(
+                                    alloc::string::String::from(var_name),
+                                ));
+                            }
+                            self.variables
+                                .push(alloc::string::String::from(var_name));
+                            break;
                         }
-                        end = pos + 1;
-                        chars.next();
                     }
+                    end = pos + 1;
+                    chars.next();
                 }
             }
         }

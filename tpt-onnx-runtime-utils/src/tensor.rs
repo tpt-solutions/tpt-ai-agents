@@ -37,3 +37,28 @@ impl Tensor {
         self.data.is_empty()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_from_slice_valid() {
+        let t = Tensor::from_slice(&[1.0, 2.0, 3.0], &[1, 3]).unwrap();
+        assert_eq!(t.data(), &[1.0, 2.0, 3.0]);
+        assert_eq!(t.shape(), &[1, 3]);
+        assert_eq!(t.len(), 3);
+    }
+
+    #[test]
+    fn test_from_slice_shape_mismatch() {
+        let result = Tensor::from_slice(&[1.0, 2.0], &[1, 3]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_empty_tensor() {
+        let t = Tensor::from_slice(&[], &[0]).unwrap();
+        assert!(t.is_empty());
+    }
+}
