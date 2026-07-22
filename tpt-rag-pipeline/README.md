@@ -16,8 +16,6 @@ computed (e.g. via `tpt-llm-client-core` or `tpt-onnx-runtime-utils`).
 ## Features
 
 - `std` (default): Enables standard library features
-- `full`: Enables integrations with `tpt-tokenizers-fast`,
-  `tpt-vector-store-traits`, and `tpt-llm-client-core`
 
 ## Usage
 

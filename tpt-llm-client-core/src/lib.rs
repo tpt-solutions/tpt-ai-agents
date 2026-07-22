@@ -10,7 +10,6 @@
 //! - `std` (default): Enables networking via reqwest
 //! - `async`: Alias for `std`
 //! - `json-sse`: Enables SSE parsing (enabled by default)
-//! - `tool-use`: Enables tool-use integration via `tpt-prompt-template`
 //!
 //! # Example
 //!

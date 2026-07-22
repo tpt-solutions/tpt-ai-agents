@@ -12,37 +12,8 @@ readme = "README.md"
 keywords = ["rag", "chunking", "embedding", "pipeline", "llm"]
 categories = ["text-processing", "asynchronous"]
 
-[dependencies]
-async-trait.workspace = true
-bytes.workspace = true
-futures.workspace = true
-pin-project-lite.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-thiserror.workspace = true
-tokio = { workspace = true, features = ["rt", "macros"] }
-
-[dependencies.tpt-tokenizers-fast]
-path = "../tpt-tokenizers-fast"
-version = "0.1.0"
-optional = true
-
-[dependencies.tpt-vector-store-traits]
-path = "../tpt-vector-store-traits"
-version = "0.1.0"
-optional = true
-
-[dependencies.tpt-llm-client-core]
-path = "../tpt-llm-client-core"
-version = "0.1.0"
-optional = true
-
-[dev-dependencies]
-tokio = { workspace = true, features = ["rt", "macros", "rt-multi-thread"] }
-
 [features]
 default = ["std", "json-sse"]
-std = ["tpt-tokenizers-fast?/std", "tpt-vector-store-traits?/std", "tpt-llm-client-core?/std"]
+std = []
 async = ["std"]
-json-sse = ["tpt-tokenizers-fast?/json-sse"]
-full = ["tpt-tokenizers-fast", "tpt-vector-store-traits", "tpt-llm-client-core"]
+json-sse = []

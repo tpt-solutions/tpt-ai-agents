@@ -17,13 +17,48 @@ Workspace of 10 independent, composable Rust crates for LLM/agent infrastructure
 - [x] Confirm all 10 crate names are unclaimed on crates.io before first
       publish (2026-07-23, checked `crates.io/api/v1/crates/<name>` — all
       10 return 404). Ran `cargo publish --dry-run` for every crate too:
-      found the README's "Tier 0 = no internal deps" claim was wrong for
-      `tpt-llm-client-core`, which optionally depends on
-      `tpt-prompt-template` for its `tool-use` feature — dry-run fails
-      until that specific dependency is published first, regardless of
-      "tier." `release.yml`'s actual publish order already has this right
-      (`tpt-prompt-template` before `tpt-llm-client-core`); only the
-      README's prose was misleading. Fixed.
+      found `tpt-llm-client-core`'s `tool-use` feature (an optional path
+      dependency on `tpt-prompt-template`) made dry-run fail until
+      `tpt-prompt-template` published first, even though both were
+      labeled "Tier 0." Root-caused further during a dependency audit
+      (below): `tool-use` had zero actual code using it, so it was removed
+      entirely rather than special-cased in the publish order — Tier 0 is
+      now genuinely order-independent again.
+- [x] **Dependency audit** (2026-07-23): ran `cargo-machete` across the
+      workspace and verified every finding by hand (it had at least one
+      false positive — `bytes` in `tpt-llm-client-core` is used via
+      `bytes::Bytes`, just not caught by the tool). Removed 24 confirmed-dead
+      dependencies:
+      - `thiserror` from all 9 crates that had it — declared everywhere but
+        never actually used; every crate hand-rolls `impl fmt::Display` +
+        `impl std::error::Error` instead of using its derive macro.
+      - `bytes`, `serde`, `thiserror` from `tpt-vector-store-traits` (kept
+        `serde`, used for `Serialize`/`Deserialize` derives) and similar
+        per-crate cleanup of `bytes`/`futures`/`serde`/`serde_json`/
+        `pin-project-lite`/`async-trait`/`tokio` wherever confirmed unused
+        (`tpt-agent-memory`, `tpt-ai-mock-server`, `tpt-eval-harness`,
+        `tpt-llm-client-core`, `tpt-onnx-runtime-utils`,
+        `tpt-prompt-template`, `tpt-tokenizers-fast`).
+      - `tpt-rag-pipeline` had **7 required dependencies it never used**
+        (`async-trait`, `bytes`, `futures`, `pin-project-lite`, `serde`,
+        `serde_json`, `thiserror`, plus `tokio` in both main and dev-deps)
+        — it's pure synchronous data-structure code (`Chunker`,
+        `ChunkConfig`, `ContextWindow`, `EmbeddingBatch`) with no
+        serialization, no async, no networking. Now has zero dependencies.
+      - Removed 3 optional path dependencies that were wired to a public
+        feature flag but had **zero** code actually using them — the same
+        "promised but unimplemented integration" pattern as the
+        `tpt-agent-memory`/vector-store gap fixed earlier this session:
+        `tpt-llm-client-core` in `tpt-eval-harness` (dead `std`/`json-sse`
+        forwarding, never enabled by anything), `tpt-prompt-template` in
+        `tpt-llm-client-core`'s `tool-use` feature (removed the feature
+        entirely), and `tpt-tokenizers-fast`/`tpt-vector-store-traits`/
+        `tpt-llm-client-core` in `tpt-rag-pipeline`'s `full` feature
+        (removed the feature entirely).
+      - Verified after every change: `cargo test --workspace --all-features`
+        (all tests still pass), `cargo clippy --all-features --all-targets`
+        (clean), `cargo fmt --check` (clean), and
+        `cargo check --no-default-features` per crate (still `no_std`-clean).
 
 ## 2. Per-crate checklist
 

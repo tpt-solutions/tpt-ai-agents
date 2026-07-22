@@ -12,9 +12,6 @@ readme = "README.md"
 keywords = ["template", "prompt", "llm", "compile-time", "typed"]
 categories = ["text-processing", "parsing"]
 
-[dependencies]
-thiserror.workspace = true
-
 [features]
 default = ["std", "json-sse"]
 std = []

@@ -12,9 +12,6 @@ readme = "README.md"
 keywords = ["tokenizer", "bpe", "sentencepiece", "no-std", "llm"]
 categories = ["text-processing", "parsing"]
 
-[dependencies]
-thiserror.workspace = true
-
 [dev-dependencies]
 criterion = { workspace = true }
 

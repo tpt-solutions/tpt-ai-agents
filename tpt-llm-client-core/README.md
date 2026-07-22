@@ -17,7 +17,6 @@ provider's request/response shape or SSE parsing.
 - `std` (default): Enables networking via reqwest
 - `async`: Alias for `std`
 - `json-sse`: Enables SSE parsing
-- `tool-use`: Enables tool-use integration via `tpt-prompt-template`
 
 ## Usage
 
