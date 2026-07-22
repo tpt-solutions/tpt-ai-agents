@@ -10,7 +10,7 @@ rust-version.workspace = true
 documentation = "https://docs.rs/tpt-onnx-runtime-utils"
 readme = "README.md"
 keywords = ["onnx", "inference", "ml", "tensor", "edge"]
-categories = ["machine-learning", "memory-management"]
+categories = ["science", "memory-management"]
 
 [dependencies]
 bytes.workspace = true
