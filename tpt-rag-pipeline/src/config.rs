@@ -7,7 +7,10 @@ pub struct ChunkConfig {
 
 impl ChunkConfig {
     pub fn new(max_tokens: usize, overlap: usize) -> Self {
-        Self { max_tokens, overlap }
+        Self {
+            max_tokens,
+            overlap,
+        }
     }
 }
 

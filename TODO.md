@@ -91,13 +91,29 @@ Workspace of 10 independent, composable Rust crates for LLM/agent infrastructure
 
 ## 4. Remaining feature gaps (not publish blockers)
 
-### 4.1 Known stubs
-- `tpt-llm-client-core`: No real HTTP/networking code yet (SSE parser works)
-- `tpt-tokenizers-fast`: BPE encode does character lookup, not real merge application
-- `tpt-onnx-runtime-utils`: `Session::run()` is a passthrough (no real ONNX inference)
-- `tpt-agent-memory`: `MemoryStore` is not thread-safe (plain `BTreeMap`)
-- `tpt-eval-harness`: No actual file-based dataset loading (works with in-memory samples)
-- `tpt-tool-use-macros`: No automatic serde for tool arguments yet
+### 4.1 Known stubs — all fixed 2026-07-22
+- [x] `tpt-llm-client-core`: Real HTTP now implemented (`SseClient::send`/`stream`) for
+      OpenAI, Anthropic, and Ollama, including provider-specific request/response mapping
+      and real SSE/NDJSON streaming. Covered by 13 unit tests in `src/http.rs`.
+- [x] `tpt-tokenizers-fast`: `BpeTokenizer::encode` now applies learned merges in
+      priority order instead of doing a 1:1 char lookup.
+- [x] `tpt-onnx-runtime-utils`: Real ONNX inference via the pure-Rust `tract-onnx` engine
+      (chosen over `ort`/onnxruntime-native to keep the crate buildable offline with no
+      system C toolchain). Verified end-to-end with a hand-built minimal ONNX model in
+      tests. Without the `std` feature, `run()` now returns an honest error instead of a
+      silent zero-filled passthrough.
+- [x] `tpt-agent-memory`: Added `ConcurrentMemoryStore` (`Arc<RwLock<MemoryStore>>`,
+      `std`-gated) for genuine thread-safe access; `MemoryStore` itself remains the
+      single-threaded no_std-compatible base, with doc comments now accurately describing
+      which type to use for concurrent access.
+- [x] `tpt-eval-harness`: Added `EvalSample::load_jsonl` and `EvalHarness::run_file`
+      (std-gated) for real file-based dataset loading, replacing the doc example that
+      referenced a non-existent API.
+- [x] `tpt-tool-use-macros`: `#[tool]` now generates a `Serialize + Deserialize` `Args`
+      struct and a `<fn>_call(json) -> Result<Output, serde_json::Error>` dispatcher.
+      Also fixed two real bugs found while implementing this: schema property names were
+      derived from the parameter *type* instead of its *name* (e.g. `"string"` instead of
+      `"location"`), and the schema builder emitted a trailing comma making it invalid JSON.
 
 ### 4.2 Future work
 - Root integration example with `tpt-ai-mock-server` for CI-testable demos
@@ -105,3 +121,6 @@ Workspace of 10 independent, composable Rust crates for LLM/agent infrastructure
 - CI job to detect `rust,ignore`/`unimplemented!()`/`todo!()` regressions
 - Per-crate maturity indicators in root README
 - `GETTING_STARTED.md` and `docs/ARCHITECTURE.md`
+- End-to-end example wiring `llm-client-core` + `tool-use-macros` + `agent-memory` +
+  `rag-pipeline` together now that real HTTP exists
+- Reference vector-store adapter example (e.g. Qdrant) for `tpt-vector-store-traits`

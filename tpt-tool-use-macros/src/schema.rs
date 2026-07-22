@@ -4,22 +4,22 @@ use syn::{FnArg, ItemFn, PatType, Type};
 
 /// Generate a JSON schema string from a function signature.
 pub fn function_to_json_schema(input: &ItemFn) -> syn::Result<String> {
-    let mut properties = String::new();
+    let mut properties = Vec::new();
     let mut required = Vec::new();
 
     for arg in &input.sig.inputs {
-        if let FnArg::Typed(PatType { ty, .. }) = arg {
-            let (name, is_optional) = extract_param_info(ty)?;
+        if let FnArg::Typed(PatType { pat, ty, .. }) = arg {
+            let name = extract_param_name(pat);
+            let is_optional = is_option_type(ty);
             let json_type = rust_type_to_json(ty)?;
-            properties.push_str(&format!(
-                "\"{}\": {{\"type\": \"{}\"}},",
-                name, json_type
-            ));
+            properties.push(format!("\"{name}\": {{\"type\": \"{json_type}\"}}"));
             if !is_optional {
                 required.push(name);
             }
         }
     }
+
+    let properties_str = properties.join(",");
 
     let required_str = required
         .iter()
@@ -32,20 +32,17 @@ pub fn function_to_json_schema(input: &ItemFn) -> syn::Result<String> {
         .iter()
         .filter_map(|attr| {
             if attr.path().is_ident("doc") {
-                attr.meta
-                    .require_name_value()
-                    .ok()
-                    .and_then(|nv| {
-                        if let syn::Expr::Lit(syn::ExprLit {
-                            lit: syn::Lit::Str(s),
-                            ..
-                        }) = &nv.value
-                        {
-                            Some(s.value().trim().to_string())
-                        } else {
-                            None
-                        }
-                    })
+                attr.meta.require_name_value().ok().and_then(|nv| {
+                    if let syn::Expr::Lit(syn::ExprLit {
+                        lit: syn::Lit::Str(s),
+                        ..
+                    }) = &nv.value
+                    {
+                        Some(s.value().trim().to_string())
+                    } else {
+                        None
+                    }
+                })
             } else {
                 None
             }
@@ -55,23 +52,27 @@ pub fn function_to_json_schema(input: &ItemFn) -> syn::Result<String> {
 
     Ok(format!(
         "{{\"type\":\"object\",\"properties\":{{{}}},\"required\":[{}],\"description\":\"{}\"}}",
-        properties, required_str, description
+        properties_str, required_str, description
     ))
 }
 
-fn extract_param_info(ty: &Type) -> syn::Result<(String, bool)> {
+/// Extract the parameter's identifier (e.g. `location` from `location: String`).
+fn extract_param_name(pat: &syn::Pat) -> String {
+    match pat {
+        syn::Pat::Ident(pat_ident) => pat_ident.ident.to_string(),
+        _ => String::from("param"),
+    }
+}
+
+fn is_option_type(ty: &Type) -> bool {
     match ty {
-        Type::Path(type_path) => {
-            let name = type_path
-                .path
-                .segments
-                .last()
-                .map(|s| s.ident.to_string())
-                .unwrap_or_default();
-            let is_optional = name == "Option";
-            Ok((name.to_lowercase(), is_optional))
-        }
-        _ => Ok(("param".into(), false)),
+        Type::Path(type_path) => type_path
+            .path
+            .segments
+            .last()
+            .map(|s| s.ident == "Option")
+            .unwrap_or(false),
+        _ => false,
     }
 }
 

@@ -20,7 +20,10 @@ impl fmt::Display for Error {
             Error::Tokenizer(msg) => write!(f, "tokenizer error: {msg}"),
             Error::Embedding(msg) => write!(f, "embedding error: {msg}"),
             Error::ContextOverflow { tokens, limit } => {
-                write!(f, "context overflow: {tokens} tokens exceeds limit of {limit}")
+                write!(
+                    f,
+                    "context overflow: {tokens} tokens exceeds limit of {limit}"
+                )
             }
         }
     }

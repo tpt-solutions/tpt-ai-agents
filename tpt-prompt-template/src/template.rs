@@ -16,7 +16,7 @@ impl PromptTemplate {
         })
     }
 
-    pub fn render(&self, vars: &[( &str, &str)]) -> alloc::string::String {
+    pub fn render(&self, vars: &[(&str, &str)]) -> alloc::string::String {
         let mut result = self.template.clone();
         for (key, value) in vars {
             let placeholder = alloc::format!("{{{{{key}}}}}");

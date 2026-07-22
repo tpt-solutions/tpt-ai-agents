@@ -8,7 +8,10 @@ pub enum Error {
     /// Inference error.
     Inference(alloc::string::String),
     /// Invalid tensor shape.
-    InvalidShape { expected: alloc::vec::Vec<usize>, actual: alloc::vec::Vec<usize> },
+    InvalidShape {
+        expected: alloc::vec::Vec<usize>,
+        actual: alloc::vec::Vec<usize>,
+    },
     /// Type mismatch.
     TypeMismatch(alloc::string::String),
 }

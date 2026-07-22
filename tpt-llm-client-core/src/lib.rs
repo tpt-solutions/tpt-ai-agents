@@ -98,7 +98,14 @@ impl SseClient {
 
     /// Send a non-streaming chat completion request.
     pub async fn send(&self, request: &ChatRequest) -> Result<ChatResponse> {
-        http::send(&self.http, &self.base_url, &self.api_key, self.provider, request).await
+        http::send(
+            &self.http,
+            &self.base_url,
+            &self.api_key,
+            self.provider,
+            request,
+        )
+        .await
     }
 
     /// Send a streaming chat completion request, returning a stream of
@@ -107,7 +114,14 @@ impl SseClient {
         &self,
         request: &ChatRequest,
     ) -> Result<impl futures::Stream<Item = Result<StreamChunk>>> {
-        http::stream(&self.http, &self.base_url, &self.api_key, self.provider, request).await
+        http::stream(
+            &self.http,
+            &self.base_url,
+            &self.api_key,
+            self.provider,
+            request,
+        )
+        .await
     }
 }
 

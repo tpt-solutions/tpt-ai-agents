@@ -11,7 +11,10 @@ pub trait VectorStore: Send + Sync {
     type Payload: Send + Sync;
 
     /// Search for similar vectors.
-    async fn search(&self, query: &Query) -> core::result::Result<alloc::vec::Vec<SearchResult<Self::Payload>>, Self::Error>;
+    async fn search(
+        &self,
+        query: &Query,
+    ) -> core::result::Result<alloc::vec::Vec<SearchResult<Self::Payload>>, Self::Error>;
 
     /// Insert vectors.
     async fn upsert(

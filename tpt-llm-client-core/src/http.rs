@@ -95,7 +95,10 @@ async fn map_error_response(status: reqwest::StatusCode, body: String) -> Error 
     match status.as_u16() {
         401 => Error::Unauthorized,
         429 => Error::RateLimited,
-        code => Error::Provider { code, message: body },
+        code => Error::Provider {
+            code,
+            message: body,
+        },
     }
 }
 
@@ -236,7 +239,13 @@ pub(crate) async fn stream(
 
     let byte_stream: core::pin::Pin<Box<dyn Stream<Item = reqwest::Result<bytes::Bytes>> + Send>> =
         Box::pin(resp.bytes_stream());
-    let state = (byte_stream, SseParser::new(), String::new(), provider, false);
+    let state = (
+        byte_stream,
+        SseParser::new(),
+        String::new(),
+        provider,
+        false,
+    );
 
     Ok(Box::pin(futures::stream::unfold(
         state,
@@ -250,25 +259,29 @@ pub(crate) async fn stream(
 
                 if provider == Provider::Ollama {
                     // Ollama streams newline-delimited JSON, not SSE.
-                    loop {
-                        if let Some(pos) = line_buf.find('\n') {
-                            let line: String = line_buf.drain(..=pos).collect();
-                            let line = line.trim();
-                            if line.is_empty() {
-                                continue;
-                            }
-                            match parse_ollama_stream_line(line) {
-                                Ok(Some(chunk)) => {
-                                    if chunk.choices.iter().any(|c| c.finish_reason.is_some()) {
-                                        done = true;
-                                    }
-                                    return Some((Ok(chunk), (byte_stream, parser, line_buf, provider, done)));
+                    while let Some(pos) = line_buf.find('\n') {
+                        let line: String = line_buf.drain(..=pos).collect();
+                        let line = line.trim();
+                        if line.is_empty() {
+                            continue;
+                        }
+                        match parse_ollama_stream_line(line) {
+                            Ok(Some(chunk)) => {
+                                if chunk.choices.iter().any(|c| c.finish_reason.is_some()) {
+                                    done = true;
                                 }
-                                Ok(None) => continue,
-                                Err(e) => return Some((Err(e), (byte_stream, parser, line_buf, provider, true))),
+                                return Some((
+                                    Ok(chunk),
+                                    (byte_stream, parser, line_buf, provider, done),
+                                ));
                             }
-                        } else {
-                            break;
+                            Ok(None) => continue,
+                            Err(e) => {
+                                return Some((
+                                    Err(e),
+                                    (byte_stream, parser, line_buf, provider, true),
+                                ))
+                            }
                         }
                     }
                     match byte_stream.next().await {
@@ -277,7 +290,10 @@ pub(crate) async fn stream(
                             continue;
                         }
                         Some(Err(e)) => {
-                            return Some((Err(Error::from(e)), (byte_stream, parser, line_buf, provider, true)))
+                            return Some((
+                                Err(Error::from(e)),
+                                (byte_stream, parser, line_buf, provider, true),
+                            ))
                         }
                         None => return None,
                     }
@@ -289,24 +305,36 @@ pub(crate) async fn stream(
                         if let Some(event) = parser.feed(&text) {
                             match parse_stream_event(provider, event.data_str()) {
                                 Ok(Some(chunk)) => {
-                                    return Some((Ok(chunk), (byte_stream, parser, line_buf, provider, done)))
+                                    return Some((
+                                        Ok(chunk),
+                                        (byte_stream, parser, line_buf, provider, done),
+                                    ))
                                 }
                                 Ok(None) => continue,
                                 Err(e) => {
-                                    return Some((Err(e), (byte_stream, parser, line_buf, provider, true)))
+                                    return Some((
+                                        Err(e),
+                                        (byte_stream, parser, line_buf, provider, true),
+                                    ))
                                 }
                             }
                         }
                         continue;
                     }
                     Some(Err(e)) => {
-                        return Some((Err(Error::from(e)), (byte_stream, parser, line_buf, provider, true)))
+                        return Some((
+                            Err(Error::from(e)),
+                            (byte_stream, parser, line_buf, provider, true),
+                        ))
                     }
                     None => {
                         if let Some(event) = parser.flush() {
                             match parse_stream_event(provider, event.data_str()) {
                                 Ok(Some(chunk)) => {
-                                    return Some((Ok(chunk), (byte_stream, parser, line_buf, provider, true)))
+                                    return Some((
+                                        Ok(chunk),
+                                        (byte_stream, parser, line_buf, provider, true),
+                                    ))
                                 }
                                 _ => return None,
                             }
@@ -342,7 +370,11 @@ fn parse_ollama_stream_line(line: &str) -> Result<Option<StreamChunk>, Error> {
             index: 0,
             delta: Delta {
                 role: Some(String::from("assistant")),
-                content: if content.is_empty() { None } else { Some(content) },
+                content: if content.is_empty() {
+                    None
+                } else {
+                    Some(content)
+                },
             },
             finish_reason: if parsed.done {
                 Some(parsed.done_reason.unwrap_or_else(|| String::from("stop")))
@@ -391,7 +423,10 @@ fn parse_stream_event(provider: Provider, data: &str) -> Result<Option<StreamChu
                         id: String::from("anthropic"),
                         choices: alloc::vec![StreamChoice {
                             index: 0,
-                            delta: Delta { role: None, content: None },
+                            delta: Delta {
+                                role: None,
+                                content: None
+                            },
                             finish_reason: stop_reason,
                         }],
                     }))
@@ -400,5 +435,122 @@ fn parse_stream_event(provider: Provider, data: &str) -> Result<Option<StreamChu
             }
         }
         Provider::Ollama => unreachable!("Ollama streaming is handled via NDJSON, not SSE"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::request::{ChatRequest, Message, Role};
+    use alloc::vec;
+
+    fn sample_request() -> ChatRequest {
+        ChatRequest {
+            model: String::from("test-model"),
+            messages: vec![
+                Message {
+                    role: Role::System,
+                    content: String::from("be nice"),
+                },
+                Message {
+                    role: Role::User,
+                    content: String::from("hello"),
+                },
+            ],
+            temperature: Some(0.5),
+            max_tokens: Some(128),
+            stream: None,
+        }
+    }
+
+    #[test]
+    fn test_endpoint_per_provider() {
+        assert_eq!(
+            endpoint("https://api.openai.com/v1", Provider::OpenAi),
+            "https://api.openai.com/v1/chat/completions"
+        );
+        assert_eq!(
+            endpoint("https://api.anthropic.com/v1/", Provider::Anthropic),
+            "https://api.anthropic.com/v1/messages"
+        );
+        assert_eq!(
+            endpoint("http://localhost:11434", Provider::Ollama),
+            "http://localhost:11434/api/chat"
+        );
+    }
+
+    #[test]
+    fn test_build_body_openai_passes_through() {
+        let body = build_body(Provider::OpenAi, &sample_request(), true);
+        assert_eq!(body["model"], "test-model");
+        assert_eq!(body["stream"], true);
+        assert_eq!(body["messages"][0]["role"], "system");
+        assert_eq!(body["messages"][1]["content"], "hello");
+    }
+
+    #[test]
+    fn test_build_body_anthropic_splits_system_message() {
+        let body = build_body(Provider::Anthropic, &sample_request(), false);
+        assert_eq!(body["system"], "be nice");
+        assert_eq!(body["messages"].as_array().unwrap().len(), 1);
+        assert_eq!(body["messages"][0]["role"], "user");
+        assert_eq!(body["max_tokens"], 128);
+    }
+
+    #[test]
+    fn test_build_body_ollama_native_shape() {
+        let body = build_body(Provider::Ollama, &sample_request(), true);
+        assert_eq!(body["model"], "test-model");
+        assert_eq!(body["messages"].as_array().unwrap().len(), 2);
+        assert_eq!(body["stream"], true);
+    }
+
+    #[test]
+    fn test_parse_response_openai() {
+        let text = r#"{"id":"abc","choices":[{"index":0,"message":{"role":"assistant","content":"hi"},"finish_reason":"stop"}],"usage":{"prompt_tokens":1,"completion_tokens":2,"total_tokens":3}}"#;
+        let resp = parse_response(Provider::OpenAi, text).unwrap();
+        assert_eq!(resp.choices[0].message.content, "hi");
+        assert_eq!(resp.usage.unwrap().total_tokens, 3);
+    }
+
+    #[test]
+    fn test_parse_response_anthropic() {
+        let text = r#"{"id":"msg_1","content":[{"type":"text","text":"hi there"}],"stop_reason":"end_turn","usage":{"input_tokens":10,"output_tokens":5}}"#;
+        let resp = parse_response(Provider::Anthropic, text).unwrap();
+        assert_eq!(resp.choices[0].message.content, "hi there");
+        assert_eq!(resp.choices[0].finish_reason.as_deref(), Some("end_turn"));
+        assert_eq!(resp.usage.unwrap().total_tokens, 15);
+    }
+
+    #[test]
+    fn test_parse_response_ollama() {
+        let text = r#"{"model":"llama3","message":{"role":"assistant","content":"hi"},"done":true,"done_reason":"stop","prompt_eval_count":4,"eval_count":6}"#;
+        let resp = parse_response(Provider::Ollama, text).unwrap();
+        assert_eq!(resp.choices[0].message.content, "hi");
+        assert_eq!(resp.usage.unwrap().total_tokens, 10);
+    }
+
+    #[test]
+    fn test_parse_stream_event_openai_done_sentinel() {
+        assert!(parse_stream_event(Provider::OpenAi, "[DONE]")
+            .unwrap()
+            .is_none());
+    }
+
+    #[test]
+    fn test_parse_stream_event_anthropic_content_delta() {
+        let data = r#"{"type":"content_block_delta","delta":{"text":"chunk"}}"#;
+        let chunk = parse_stream_event(Provider::Anthropic, data)
+            .unwrap()
+            .unwrap();
+        assert_eq!(chunk.choices[0].delta.content.as_deref(), Some("chunk"));
+    }
+
+    #[test]
+    fn test_parse_ollama_stream_line_done() {
+        let line = r#"{"message":{"content":"done text"},"done":true,"done_reason":"stop"}"#;
+        let chunk = parse_ollama_stream_line(line).unwrap().unwrap();
+        assert_eq!(chunk.choices[0].delta.content.as_deref(), Some("done text"));
+        assert_eq!(chunk.choices[0].finish_reason.as_deref(), Some("stop"));
     }
 }

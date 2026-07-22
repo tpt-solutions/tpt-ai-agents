@@ -7,14 +7,14 @@ pub fn validate_request(body: &str) -> core::result::Result<(), Error> {
     match parsed {
         Ok(val) => {
             if val.get("model").is_none() {
-                return Err(Error::Validation(
-                    alloc::string::String::from("missing required field: model"),
-                ));
+                return Err(Error::Validation(alloc::string::String::from(
+                    "missing required field: model",
+                )));
             }
             if val.get("messages").is_none() {
-                return Err(Error::Validation(
-                    alloc::string::String::from("missing required field: messages"),
-                ));
+                return Err(Error::Validation(alloc::string::String::from(
+                    "missing required field: messages",
+                )));
             }
             Ok(())
         }

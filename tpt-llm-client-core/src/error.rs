@@ -13,7 +13,10 @@ pub enum Error {
     /// Request validation error.
     InvalidRequest(alloc::string::String),
     /// Provider-specific error.
-    Provider { code: u16, message: alloc::string::String },
+    Provider {
+        code: u16,
+        message: alloc::string::String,
+    },
     /// Rate limit exceeded.
     RateLimited,
     /// Authentication error.

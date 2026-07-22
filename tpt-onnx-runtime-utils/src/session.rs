@@ -35,7 +35,9 @@ impl Session {
                 .into_optimized()
                 .map_err(|e| Error::ModelLoad(alloc::format!("failed to optimize model: {e}")))?
                 .into_runnable()
-                .map_err(|e| Error::ModelLoad(alloc::format!("failed to build runnable plan: {e}")))?;
+                .map_err(|e| {
+                    Error::ModelLoad(alloc::format!("failed to build runnable plan: {e}"))
+                })?;
 
             Ok(Self {
                 model_path: alloc::string::String::from(path),
@@ -68,9 +70,9 @@ impl Session {
             .run(tvec!(input_tensor.into()))
             .map_err(|e| Error::Inference(alloc::format!("inference failed: {e}")))?;
 
-        let output = outputs
-            .first()
-            .ok_or_else(|| Error::Inference(alloc::string::String::from("model produced no outputs")))?;
+        let output = outputs.first().ok_or_else(|| {
+            Error::Inference(alloc::string::String::from("model produced no outputs"))
+        })?;
         let view = output
             .to_array_view::<f32>()
             .map_err(|e| Error::Inference(alloc::format!("failed to read output tensor: {e}")))?;
@@ -125,8 +127,7 @@ mod tests {
         use prost::Message;
         use tract_onnx::pb::{
             tensor_proto::DataType, tensor_shape_proto::Dimension, type_proto, GraphProto,
-            ModelProto, NodeProto, OperatorSetIdProto, TensorShapeProto, TypeProto,
-            ValueInfoProto,
+            ModelProto, NodeProto, OperatorSetIdProto, TensorShapeProto, TypeProto, ValueInfoProto,
         };
 
         let tensor_type = |dim: i64| TypeProto {

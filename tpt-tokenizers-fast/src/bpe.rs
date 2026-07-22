@@ -51,10 +51,9 @@ impl BpeTokenizer {
 
         let mut tokens = alloc::vec::Vec::with_capacity(symbols.len());
         for id in symbols {
-            let text = self
-                .vocab
-                .get_token(id)
-                .ok_or_else(|| Error::Encoding(alloc::format!("no vocab entry for merged token id {id}")))?;
+            let text = self.vocab.get_token(id).ok_or_else(|| {
+                Error::Encoding(alloc::format!("no vocab entry for merged token id {id}"))
+            })?;
             tokens.push(Token::new(id, text));
         }
         Ok(tokens)

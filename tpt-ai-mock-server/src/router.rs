@@ -27,7 +27,10 @@ impl Router {
 
     #[allow(dead_code)]
     pub fn find(&self, path: &str) -> Option<&RecordedResponse> {
-        self.routes.iter().find(|r| r.path == path).map(|r| &r.response)
+        self.routes
+            .iter()
+            .find(|r| r.path == path)
+            .map(|r| &r.response)
     }
 }
 

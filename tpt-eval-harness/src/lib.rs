@@ -21,6 +21,17 @@
 //! let metrics = harness.run(&samples);
 //! assert_eq!(metrics.correct, 1);
 //! ```
+//!
+//! Datasets can also be loaded from a JSONL file (one JSON-encoded
+//! [`EvalSample`] per line), with the `std` feature enabled:
+//!
+//! ```rust,ignore
+//! use tpt_eval_harness::{EvalHarness, EvalConfig};
+//!
+//! let harness = EvalHarness::new(EvalConfig::default());
+//! let metrics = harness.run_file("eval_dataset.jsonl").unwrap();
+//! println!("accuracy: {}", metrics.accuracy());
+//! ```
 #![no_std]
 
 extern crate alloc;

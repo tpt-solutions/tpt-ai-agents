@@ -40,7 +40,10 @@ pub trait Tokenizer {
     type Error;
 
     fn encode(&self, text: &str) -> core::result::Result<alloc::vec::Vec<Token>, Self::Error>;
-    fn decode(&self, tokens: &[TokenId]) -> core::result::Result<alloc::string::String, Self::Error>;
+    fn decode(
+        &self,
+        tokens: &[TokenId],
+    ) -> core::result::Result<alloc::string::String, Self::Error>;
     fn vocab_size(&self) -> usize;
 }
 

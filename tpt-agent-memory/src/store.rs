@@ -33,13 +33,16 @@ impl MemoryStore {
             .entries
             .values()
             .filter(|e| {
-                e.content.contains(&query.text)
-                    || e.tags.iter().any(|t| t.contains(&query.text))
+                e.content.contains(&query.text) || e.tags.iter().any(|t| t.contains(&query.text))
             })
             .filter(|e| e.score >= query.min_score)
             .collect();
 
-        results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(core::cmp::Ordering::Equal));
+        results.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(core::cmp::Ordering::Equal)
+        });
         results.truncate(query.limit);
         results
     }

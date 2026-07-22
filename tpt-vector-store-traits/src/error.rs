@@ -14,7 +14,10 @@ pub enum Error {
     /// Timeout.
     Timeout,
     /// Provider-specific error.
-    Provider { code: u16, message: alloc::string::String },
+    Provider {
+        code: u16,
+        message: alloc::string::String,
+    },
 }
 
 impl fmt::Display for Error {

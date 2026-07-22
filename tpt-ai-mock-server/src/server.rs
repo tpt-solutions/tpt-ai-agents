@@ -1,4 +1,4 @@
-use crate::{RecordedResponse, router::Router};
+use crate::{router::Router, RecordedResponse};
 
 /// Mock LLM server for testing.
 pub struct MockServer {

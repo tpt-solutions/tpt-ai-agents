@@ -30,16 +30,12 @@ impl TemplateParser {
                             if var_name.is_empty() {
                                 return Err(Error::UnclosedVariable { position: start });
                             }
-                            if !var_name
-                                .chars()
-                                .all(|c| c.is_alphanumeric() || c == '_')
-                            {
+                            if !var_name.chars().all(|c| c.is_alphanumeric() || c == '_') {
                                 return Err(Error::InvalidVariableName(
                                     alloc::string::String::from(var_name),
                                 ));
                             }
-                            self.variables
-                                .push(alloc::string::String::from(var_name));
+                            self.variables.push(alloc::string::String::from(var_name));
                             break;
                         }
                     }

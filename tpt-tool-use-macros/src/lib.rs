@@ -14,9 +14,13 @@
 //!     format!("Weather for {} at 72°F", location)
 //! }
 //!
-//! // The macro generates:
-//! // - A JSON schema for the function
-//! // - A wrapper type that handles serde
+//! // The macro generates, alongside the original function:
+//! // - `get_weather_schema() -> &'static str`, a JSON schema for the function
+//! // - `GetWeatherArgs`, a `Serialize + Deserialize` struct mirroring the parameters
+//! // - `get_weather_call(args_json: &str) -> Result<String, serde_json::Error>`,
+//! //   which deserializes JSON tool-call arguments and invokes `get_weather`
+//! //
+//! // Requires `serde` and `serde_json` as dependencies of the crate using `#[tool]`.
 //! ```
 extern crate proc_macro;
 
