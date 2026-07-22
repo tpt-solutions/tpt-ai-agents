@@ -23,12 +23,12 @@ fn build_merge_tokenizer() -> BpeTokenizer {
     vocab.insert("an", 31);
     vocab.insert("re", 32);
     let mut merges = BTreeMap::new();
-    merges.insert((19, 7), 27);  // t+h -> th
-    merges.insert((7, 4), 28);   // h+e -> he
-    merges.insert((8, 13), 29);  // i+n -> in
-    merges.insert((4, 17), 30);  // e+r -> er
-    merges.insert((0, 13), 31);  // a+n -> an
-    merges.insert((17, 4), 32);  // r+e -> re
+    merges.insert((19, 7), 27); // t+h -> th
+    merges.insert((7, 4), 28); // h+e -> he
+    merges.insert((8, 13), 29); // i+n -> in
+    merges.insert((4, 17), 30); // e+r -> er
+    merges.insert((0, 13), 31); // a+n -> an
+    merges.insert((17, 4), 32); // r+e -> re
     BpeTokenizer::new(vocab, merges)
 }
 

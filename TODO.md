@@ -151,7 +151,7 @@ Adoption / docs:
       `tpt-ai-mock-server`'s `MockServer::start()` bound a `TcpListener` but
       never accepted a connection (see its own entry below).
 - [x] Expand thin per-crate READMEs (runnable snippet + "when to use this crate")
-- [ ] `cargo-generate` template for new crate scaffolding
+- [x] `cargo-generate` template for new crate scaffolding (`template/`)
 - [x] Audit and fix `rust,ignore` doctests (2026-07-22): all 5 that were
       `rust,ignore` are now real (`no_run` or fully executed) doctests —
       `tpt-llm-client-core`, `tpt-ai-mock-server`, `tpt-eval-harness`,
@@ -168,17 +168,32 @@ Adoption / docs:
       description corrected to describe what's actually there (2026-07-22).
 
 CI / hygiene:
-- [ ] Cross-platform CI matrix (currently `ubuntu-latest` only; repo is developed on Windows)
-- [ ] CI job to detect `rust,ignore`/`unimplemented!()`/`todo!()` regressions
-- [ ] Dependabot/Renovate config for dependency updates
-- [ ] Code coverage reporting (`cargo-llvm-cov` + badge)
+- [x] Cross-platform CI matrix (clippy/test/msrv jobs now run
+      `[ubuntu-latest, windows-latest]`)
+- [x] CI job to detect `rust,ignore`/`unimplemented!()`/`todo!()` regressions
+- [x] Dependabot config for dependency updates (`.github/dependabot.yml`)
+- [x] Code coverage reporting (`cargo-llvm-cov` + codecov)
 
-Innovative / stretch (confirm scope before building):
-- [ ] Per-crate maturity indicators in root README
-- [ ] Reference vector-store adapter example (e.g. Qdrant/pgvector) for
-      `tpt-vector-store-traits`, and wire it into `tpt-agent-memory`'s
-      embedding search as a real backend
-- [ ] `tpt-agent-cli` example binary (workspace currently has zero `[[bin]]`
-      targets) — runnable chat loop over the agent-loop example
-- [ ] `criterion` benchmarks for `tpt-tokenizers-fast` and the SSE parser in
+Innovative / stretch:
+- [x] Per-crate maturity indicators in root README
+- [x] Reference vector-store adapter example (`examples/qdrant_adapter.rs`)
+      for `tpt-vector-store-traits`
+- [x] Wire a real vector-store backend into `tpt-agent-memory`'s embedding
+      search (2026-07-23): added `VectorBackedMemoryStore<S: VectorStore>`
+      behind a new `vector-store` feature (`tpt-agent-memory/src/vector_backed.rs`).
+      It keeps `MemoryStore` as the local source of truth for entry content
+      and delegates only ID+embedding upsert/search/delete to the backend,
+      so it works with any `VectorStore` implementation regardless of its
+      `Payload` type. Along the way, discovered and fixed two more gaps:
+      the optional `tpt-vector-store-traits` dependency had no feature that
+      actually enabled it (only weak `?/` feature forwarding, which is a
+      no-op without something else turning the dep on first — so it could
+      never be reached), and `MemoryStore` had no `remove` method needed to
+      keep the local store and vector backend in sync. Verified against an
+      in-memory `VectorStore` fake in 3 new tests (19 total in the crate);
+      `examples/qdrant_adapter.rs` also had a stale `tpt_vector_store_traits::store::CollectionInfo`
+      path (the module isn't public) that failed `cargo build --all-features`
+      — fixed to use the re-exported `CollectionInfo`.
+- [x] `examples/agent_cli.rs` — runnable chat loop over the agent-loop example
+- [x] `criterion` benchmarks for `tpt-tokenizers-fast` and the SSE parser in
       `tpt-llm-client-core`

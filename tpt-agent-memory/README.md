@@ -18,6 +18,10 @@ attach embeddings from your own embedding model) by similarity.
   `ConcurrentMemoryStore` for multi-threaded access
 - Keyword (substring) search always available; cosine-similarity semantic
   search when entries carry an embedding
+- `vector-store`: Enables `VectorBackedMemoryStore`, which delegates
+  embedding search to a real `tpt-vector-store-traits::VectorStore` backend
+  (Qdrant, pgvector, etc.) instead of scanning in-memory — for when you have
+  too many entries to scan linearly
 
 ## Usage
 
@@ -33,6 +37,19 @@ let results = store.search(&SearchQuery::new("dark mode"));
 // Semantic search, once you have an embedding for the entry and the query:
 store.insert(MemoryEntry::new("likes minimal UIs", &["pref"]).with_embedding(vec![0.1, 0.9]));
 let results = store.search(&SearchQuery::new("").with_embedding(vec![0.1, 0.9]));
+```
+
+With the `vector-store` feature, swap `MemoryStore` for `VectorBackedMemoryStore<S>`
+where `S` implements `tpt_vector_store_traits::VectorStore` (see
+[`examples/qdrant_adapter.rs`](../examples/qdrant_adapter.rs) for a reference
+adapter shape) to scale semantic search past what a linear scan can handle:
+
+```rust,ignore
+use tpt_agent_memory::{MemoryEntry, VectorBackedMemoryStore};
+
+let mut store = VectorBackedMemoryStore::new(my_qdrant_adapter);
+store.insert(MemoryEntry::new("likes minimal UIs", &["pref"]).with_embedding(vec![0.1, 0.9])).await?;
+let results = store.search_semantic(vec![0.1, 0.9], 10).await?;
 ```
 
 See [GETTING_STARTED.md](../GETTING_STARTED.md) for a full agent-loop example.

@@ -9,8 +9,11 @@ backend adapters.
 **When to use this crate:** you want your code to be portable across
 vector database backends. This crate ships the trait only — **no Qdrant,
 Milvus, or pgvector adapter is included**; implement `VectorStore` for your
-own client (see `tpt-agent-memory` for an in-memory, non-database example
-of cosine-similarity search you can use as a reference).
+own client (see [`examples/qdrant_adapter.rs`](../examples/qdrant_adapter.rs)
+in the workspace root for the shape of a real adapter). Once implemented,
+`tpt-agent-memory`'s `VectorBackedMemoryStore` (behind its `vector-store`
+feature) can use it directly for embedding search at scale, in place of
+that crate's default in-memory cosine-similarity scan.
 
 ## Features
 

@@ -1,15 +1,20 @@
 //! Reference adapter example for `tpt-vector-store-traits`.
 //!
 //! Shows how to implement the [`VectorStore`] trait for a hypothetical
-//! Qdrant client. This example is `ignore`d because it depends on an
-//! external crate (`qdrant-client`) that is not a workspace dependency.
+//! Qdrant client — every method body is a placeholder (`Err(...)`) since
+//! this example intentionally has no dependency on a real `qdrant-client`
+//! crate. A type implementing `VectorStore` like this one is exactly what
+//! `tpt-agent-memory::VectorBackedMemoryStore` (behind its `vector-store`
+//! feature) expects, for embedding search backed by a real vector database
+//! instead of an in-memory scan.
 //!
-//! To use this as a starting point, add `qdrant-client` to your
-//! `Cargo.toml` and copy this file into your project.
+//! To use this as a starting point: add `qdrant-client` to your
+//! `Cargo.toml`, copy this file into your project, and fill in each
+//! method body per its comment.
 
 use async_trait::async_trait;
 use tpt_vector_store_traits::{
-    CosineDistance, Distance, Error, Query, SearchResult, VectorStore,
+    CollectionInfo, CosineDistance, Error, Query, SearchResult, VectorStore,
 };
 
 /// A hypothetical Qdrant client wrapper.
@@ -51,10 +56,7 @@ impl VectorStore for QdrantAdapter {
     type Distance = CosineDistance;
     type Payload = serde_json::Value;
 
-    async fn search(
-        &self,
-        query: &Query,
-    ) -> Result<Vec<SearchResult<Self::Payload>>, Self::Error> {
+    async fn search(&self, query: &Query) -> Result<Vec<SearchResult<Self::Payload>>, Self::Error> {
         // In a real implementation:
         // 1. Build a Qdrant SearchRequest from `query`
         // 2. Call self.client.search(request).await
@@ -83,7 +85,7 @@ impl VectorStore for QdrantAdapter {
         Err(QdrantError("not yet implemented — see comments".into()))
     }
 
-    async fn info(&self) -> Result<tpt_vector_store_traits::store::CollectionInfo, Self::Error> {
+    async fn info(&self) -> Result<CollectionInfo, Self::Error> {
         // In a real implementation:
         // self.client.collection_info(&self.collection).await
         Err(QdrantError("not yet implemented — see comments".into()))

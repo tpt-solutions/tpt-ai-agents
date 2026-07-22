@@ -33,3 +33,7 @@ default = ["std", "json-sse"]
 std = ["tpt-vector-store-traits?/std"]
 async = ["std"]
 json-sse = ["tpt-vector-store-traits?/json-sse"]
+# Enables `VectorBackedMemoryStore`, which delegates embedding search to a
+# real `tpt-vector-store-traits::VectorStore` backend (e.g. Qdrant, pgvector)
+# instead of `MemoryStore`'s in-memory cosine-similarity scan.
+vector-store = ["dep:tpt-vector-store-traits", "async"]

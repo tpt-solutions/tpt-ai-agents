@@ -36,6 +36,11 @@ impl MemoryStore {
         self.entries.get(id)
     }
 
+    /// Remove and return the entry with the given ID, if present.
+    pub fn remove(&mut self, id: &str) -> Option<MemoryEntry> {
+        self.entries.remove(id)
+    }
+
     /// Search entries by substring/tag match, or by cosine-similarity
     /// against `query.embedding` when set (see
     /// [`SearchQuery::with_embedding`]).
@@ -95,8 +100,8 @@ impl MemoryStore {
     /// any existing file. Requires the `std` feature.
     #[cfg(feature = "std")]
     pub fn save_to_file(&self, path: impl AsRef<std::path::Path>) -> crate::Result<()> {
-        let json = serde_json::to_string(self)
-            .map_err(|e| Error::Serialization(alloc::format!("{e}")))?;
+        let json =
+            serde_json::to_string(self).map_err(|e| Error::Serialization(alloc::format!("{e}")))?;
         std::fs::write(path, json).map_err(|e| Error::Storage(alloc::format!("{e}")))
     }
 
@@ -136,14 +141,12 @@ mod tests {
     fn test_embedding_search_ranks_by_similarity() {
         let mut store = MemoryStore::new();
         store.insert(
-            MemoryEntry::with_id("close", "close match", &[]).with_embedding(alloc::vec![
-                1.0, 0.0, 0.0
-            ]),
+            MemoryEntry::with_id("close", "close match", &[])
+                .with_embedding(alloc::vec![1.0, 0.0, 0.0]),
         );
         store.insert(
-            MemoryEntry::with_id("far", "far match", &[]).with_embedding(alloc::vec![
-                0.0, 1.0, 0.0
-            ]),
+            MemoryEntry::with_id("far", "far match", &[])
+                .with_embedding(alloc::vec![0.0, 1.0, 0.0]),
         );
         store.insert(MemoryEntry::with_id("no_embedding", "no embedding", &[]));
 
@@ -174,6 +177,9 @@ mod tests {
 
         assert_eq!(loaded.len(), 2);
         assert_eq!(loaded.get("a").unwrap().content, "hello world");
-        assert_eq!(loaded.get("b").unwrap().embedding, Some(alloc::vec![1.0, 2.0]));
+        assert_eq!(
+            loaded.get("b").unwrap().embedding,
+            Some(alloc::vec![1.0, 2.0])
+        );
     }
 }

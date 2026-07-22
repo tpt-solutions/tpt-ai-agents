@@ -116,10 +116,23 @@ async fn handle_connection(
         .expect("mock server router lock poisoned")
         .take(&path);
     match response {
-        None => write_response(&mut stream, 404, "application/json", "{\"error\":\"no route\"}")
-            .await,
+        None => {
+            write_response(
+                &mut stream,
+                404,
+                "application/json",
+                "{\"error\":\"no route\"}",
+            )
+            .await
+        }
         Some(recorded) if recorded.chunks.len() == 1 && recorded.chunks[0].event_type.is_none() => {
-            write_response(&mut stream, 200, "application/json", &recorded.chunks[0].data).await
+            write_response(
+                &mut stream,
+                200,
+                "application/json",
+                &recorded.chunks[0].data,
+            )
+            .await
         }
         Some(recorded) => write_sse_response(&mut stream, &recorded.chunks).await,
     }
@@ -150,8 +163,7 @@ async fn write_sse_response(
     stream: &mut tokio::net::TcpStream,
     chunks: &[crate::SseChunk],
 ) -> std::io::Result<()> {
-    let header =
-        "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\nconnection: close\r\n\r\n";
+    let header = "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\nconnection: close\r\n\r\n";
     stream.write_all(header.as_bytes()).await?;
     for chunk in chunks {
         let mut event = String::new();

@@ -58,10 +58,15 @@ chunk-and-retrieve piece.
 `tpt-tokenizers-fast` and `tpt-onnx-runtime-utils` are used off this main
 path — for counting/limiting tokens before a request, or for running a
 local model instead of a hosted one. `tpt-vector-store-traits` defines the
-async traits `tpt-rag-pipeline`/`tpt-agent-memory` would use for a real
-vector database backend; no concrete adapter (Qdrant, pgvector, etc.) ships
-yet, so today's semantic search in `tpt-agent-memory` is a self-contained
-cosine-similarity scan over in-memory embeddings, not a vector DB query.
+async `VectorStore` trait a real vector database backend implements; no
+concrete adapter (Qdrant, pgvector, etc.) ships in that crate itself — see
+[`examples/qdrant_adapter.rs`](../examples/qdrant_adapter.rs) for a
+reference implementation shape. `tpt-agent-memory`'s default
+`MemoryStore::search` is still a self-contained cosine-similarity scan over
+in-memory embeddings (fine up to a few thousand entries); its
+`vector-store`-feature-gated `VectorBackedMemoryStore` instead upserts
+embeddings into any `VectorStore` implementation and queries it directly,
+for when the scan no longer scales — see that crate's README.
 `tpt-eval-harness` runs outside the live loop entirely — it replays a fixed
 dataset through `tpt-llm-client-core` to score a model deterministically.
 

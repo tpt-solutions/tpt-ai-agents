@@ -2,8 +2,7 @@
 
 use crate::response::{Choice, Delta, StreamChoice, Usage};
 use crate::{
-    ChatRequest, ChatResponse, Error, Message, Provider, RetryConfig, Role, SseParser,
-    StreamChunk,
+    ChatRequest, ChatResponse, Error, Message, Provider, RetryConfig, Role, SseParser, StreamChunk,
 };
 use alloc::boxed::Box;
 use alloc::format;

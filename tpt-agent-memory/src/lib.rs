@@ -17,6 +17,10 @@
 //!   [`MemoryStore::save_to_file`] / [`MemoryStore::load_from_file`]
 //!   (JSON file persistence) and [`ConcurrentMemoryStore`].
 //! - `async`: Alias for `std`
+//! - `vector-store`: Enables [`VectorBackedMemoryStore`], which delegates
+//!   embedding search to a real `tpt-vector-store-traits::VectorStore`
+//!   backend (e.g. Qdrant, pgvector) instead of the in-memory scan above —
+//!   for when the number of entries is too large to scan linearly.
 //!
 //! # Example
 //!
@@ -44,6 +48,8 @@ mod error;
 mod graph;
 mod search;
 mod store;
+#[cfg(feature = "vector-store")]
+mod vector_backed;
 
 #[cfg(feature = "std")]
 pub use concurrent::ConcurrentMemoryStore;
@@ -53,6 +59,8 @@ pub use error::Error;
 pub use graph::MemoryGraph;
 pub use search::SearchQuery;
 pub use store::MemoryStore;
+#[cfg(feature = "vector-store")]
+pub use vector_backed::VectorBackedMemoryStore;
 
 /// Re-export for convenience.
 pub type Result<T> = core::result::Result<T, Error>;

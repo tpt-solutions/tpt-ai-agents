@@ -21,9 +21,18 @@ fn main() {
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
-            "--api-key" => { i += 1; api_key = args.get(i).cloned().unwrap_or_default(); }
-            "--base-url" => { i += 1; base_url = args.get(i).cloned().unwrap_or_default(); }
-            "--model" => { i += 1; model = args.get(i).cloned().unwrap_or_default(); }
+            "--api-key" => {
+                i += 1;
+                api_key = args.get(i).cloned().unwrap_or_default();
+            }
+            "--base-url" => {
+                i += 1;
+                base_url = args.get(i).cloned().unwrap_or_default();
+            }
+            "--model" => {
+                i += 1;
+                model = args.get(i).cloned().unwrap_or_default();
+            }
             _ => {}
         }
         i += 1;
@@ -68,7 +77,10 @@ fn main() {
             continue;
         }
 
-        memory.insert(MemoryEntry::new(&format!("user: {input}"), &["conversation"]));
+        memory.insert(MemoryEntry::new(
+            &format!("user: {input}"),
+            &["conversation"],
+        ));
 
         let context = memory.search(&SearchQuery::new(input));
         let context_str = if context.is_empty() {
@@ -76,7 +88,11 @@ fn main() {
         } else {
             format!(
                 "\n[relevant context: {}]",
-                context.iter().map(|e| e.content.as_str()).collect::<Vec<_>>().join("; ")
+                context
+                    .iter()
+                    .map(|e| e.content.as_str())
+                    .collect::<Vec<_>>()
+                    .join("; ")
             )
         };
 
@@ -101,7 +117,10 @@ fn main() {
                     role: Role::Assistant,
                     content: reply.clone(),
                 });
-                memory.insert(MemoryEntry::new(&format!("assistant: {reply}"), &["conversation"]));
+                memory.insert(MemoryEntry::new(
+                    &format!("assistant: {reply}"),
+                    &["conversation"],
+                ));
             }
             Err(e) => {
                 eprintln!("Error: {e}");
