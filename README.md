@@ -30,9 +30,18 @@ See [GETTING_STARTED.md](GETTING_STARTED.md) for a quickstart and
 
 ## Publish Order
 
-Publish by tier, waiting for crates.io propagation between tiers:
+Publish by tier, waiting for crates.io propagation between tiers. Within
+Tier 0, `tpt-prompt-template` must go out **before** `tpt-llm-client-core`
+specifically — its `tool-use` feature is an optional path dependency on
+`tpt-prompt-template`, and `cargo publish` needs every dependency listed in
+`Cargo.toml` to resolve against the registry, even ones gated behind a
+non-default feature. `cargo publish --dry-run` fails on
+`tpt-llm-client-core` until `tpt-prompt-template` is live.
 
-**Tier 0** (no internal deps): `tpt-tokenizers-fast`, `tpt-llm-client-core`, `tpt-vector-store-traits`, `tpt-prompt-template`, `tpt-tool-use-macros`, `tpt-onnx-runtime-utils`, `tpt-ai-mock-server`
+**Tier 0** (no internal deps except the `tpt-prompt-template` →
+`tpt-llm-client-core` pair above): `tpt-tokenizers-fast`,
+`tpt-prompt-template`, `tpt-vector-store-traits`, `tpt-tool-use-macros`,
+`tpt-onnx-runtime-utils`, `tpt-ai-mock-server`, then `tpt-llm-client-core`
 
 **Tier 1** (depend on Tier 0): `tpt-rag-pipeline`, `tpt-agent-memory`, `tpt-eval-harness`
 

@@ -14,7 +14,16 @@ Workspace of 10 independent, composable Rust crates for LLM/agent infrastructure
 - [x] GitHub Actions CI (`ci.yml`) — fmt, clippy, test matrix, no_std, doc, deny, semver, publish-dry-run
 - [x] Tag-triggered release workflow (`release.yml`) — version verification, tiered publish, GitHub Release
 - [x] Document publish order (dependency tiers)
-- [ ] Confirm all 10 crate names are unclaimed on crates.io before first publish
+- [x] Confirm all 10 crate names are unclaimed on crates.io before first
+      publish (2026-07-23, checked `crates.io/api/v1/crates/<name>` — all
+      10 return 404). Ran `cargo publish --dry-run` for every crate too:
+      found the README's "Tier 0 = no internal deps" claim was wrong for
+      `tpt-llm-client-core`, which optionally depends on
+      `tpt-prompt-template` for its `tool-use` feature — dry-run fails
+      until that specific dependency is published first, regardless of
+      "tier." `release.yml`'s actual publish order already has this right
+      (`tpt-prompt-template` before `tpt-llm-client-core`); only the
+      README's prose was misleading. Fixed.
 
 ## 2. Per-crate checklist
 
@@ -106,7 +115,7 @@ Workspace of 10 independent, composable Rust crates for LLM/agent infrastructure
 - [x] `cargo deny check` passes locally
 - [x] `cargo publish --dry-run` passes for all Tier 0 crates
 - [x] Doc fixes: agent-memory store doc, eval-harness doc example
-- [ ] Confirm all 10 crate names are unclaimed on crates.io
+- [x] Confirm all 10 crate names are unclaimed on crates.io (see §1)
 - [ ] Post-publish: confirm docs.rs builds succeed
 
 ## 4. Remaining feature gaps (not publish blockers)
