@@ -9,14 +9,17 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
-//! use tpt_tokenizers_fast::{BpeTokenizer, Tokenizer};
+//! ```
+//! use tpt_tokenizers_fast::{BpeTokenizer, Vocabulary};
+//! use std::collections::BTreeMap;
 //!
-//! fn tokenize() {
-//!     let tokenizer = BpeTokenizer::from_file("vocab.bpe").unwrap();
-//!     let tokens = tokenizer.encode("Hello, world!").unwrap();
-//!     println!("{:?}", tokens);
+//! let mut vocab = Vocabulary::new();
+//! for (i, ch) in "helo, wrd!".chars().enumerate() {
+//!     vocab.insert(&ch.to_string(), i as u32);
 //! }
+//! let tokenizer = BpeTokenizer::new(vocab, BTreeMap::new());
+//! let tokens = tokenizer.encode("hello").unwrap();
+//! assert_eq!(tokens.len(), 5);
 //! ```
 #![no_std]
 

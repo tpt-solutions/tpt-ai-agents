@@ -1,27 +1,30 @@
 use alloc::string::String;
+use alloc::vec::Vec;
+use core::sync::atomic::{AtomicU64, Ordering};
 
 /// Global counter for generating unique entry IDs.
-static mut NEXT_ID: u64 = 0;
+static NEXT_ID: AtomicU64 = AtomicU64::new(0);
 
 fn next_id() -> u64 {
-    // SAFETY: This is a simple monotonic counter. In a real implementation,
-    // you'd use atomics or a UUID library.
-    unsafe {
-        let id = NEXT_ID;
-        NEXT_ID += 1;
-        id
-    }
+    NEXT_ID.fetch_add(1, Ordering::Relaxed)
 }
 
 /// A single memory entry.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MemoryEntry {
     pub id: String,
     pub content: String,
-    pub tags: alloc::vec::Vec<String>,
+    pub tags: Vec<String>,
     pub timestamp: u64,
     pub access_count: u64,
     pub score: f32,
+    /// Optional embedding vector for cosine-similarity semantic search.
+    ///
+    /// This crate does not compute embeddings itself — callers obtain them
+    /// from an embedding model (e.g. via `tpt-llm-client-core`) and attach
+    /// them here. Entries without an embedding still participate in
+    /// substring/tag search via [`crate::MemoryStore::search`].
+    pub embedding: Option<Vec<f32>>,
 }
 
 impl MemoryEntry {
@@ -34,6 +37,7 @@ impl MemoryEntry {
             timestamp: 0,
             access_count: 0,
             score: 1.0,
+            embedding: None,
         }
     }
 
@@ -46,7 +50,16 @@ impl MemoryEntry {
             timestamp: 0,
             access_count: 0,
             score: 1.0,
+            embedding: None,
         }
+    }
+
+    /// Attach an embedding vector, enabling cosine-similarity search for
+    /// this entry when queries are built with
+    /// [`crate::SearchQuery::with_embedding`].
+    pub fn with_embedding(mut self, embedding: Vec<f32>) -> Self {
+        self.embedding = Some(embedding);
+        self
     }
 }
 

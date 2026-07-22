@@ -15,6 +15,13 @@ categories = ["text-processing", "parsing"]
 [dependencies]
 thiserror.workspace = true
 
+[dev-dependencies]
+criterion = { workspace = true }
+
+[[bench]]
+name = "tokenizer"
+harness = false
+
 [features]
 default = ["std", "json-sse"]
 std = []

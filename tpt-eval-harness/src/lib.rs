@@ -25,7 +25,7 @@
 //! Datasets can also be loaded from a JSONL file (one JSON-encoded
 //! [`EvalSample`] per line), with the `std` feature enabled:
 //!
-//! ```rust,ignore
+//! ```no_run
 //! use tpt_eval_harness::{EvalHarness, EvalConfig};
 //!
 //! let harness = EvalHarness::new(EvalConfig::default());

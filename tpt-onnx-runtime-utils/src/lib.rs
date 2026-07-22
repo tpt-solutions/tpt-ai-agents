@@ -13,15 +13,15 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```no_run
 //! use tpt_onnx_runtime_utils::{Session, Tensor};
 //!
-//! fn run_inference() -> Result<(), Box<dyn std::error::Error>> {
-//!     let session = Session::from_file("model.onnx")?;
-//!     let input = Tensor::from_slice(&[1.0, 2.0, 3.0], &[1, 3])?;
-//!     let output = session.run(&input)?;
-//!     Ok(())
-//! }
+//! # fn run_inference() -> Result<(), Box<dyn std::error::Error>> {
+//! let session = Session::from_file("model.onnx")?;
+//! let input = Tensor::from_slice(&[1.0, 2.0, 3.0], &[1, 3])?;
+//! let _output = session.run(&input)?;
+//! # Ok(())
+//! # }
 //! ```
 #![no_std]
 

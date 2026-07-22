@@ -1,10 +1,21 @@
-//! In-memory and persistent graph/vector memory for multi-turn state.
+//! In-memory and (with the `std` feature) file-persistent graph/vector
+//! memory for multi-turn state.
 //!
-//! Provides a memory store with semantic search and temporal decay support.
+//! [`MemoryStore::search`] supports two modes:
+//! - **Keyword search** (default): substring match on content/tags, ranked
+//!   by `MemoryEntry::score`. Works in `no_std`.
+//! - **Semantic search**: when a query is built with
+//!   [`SearchQuery::with_embedding`], entries that carry a
+//!   [`MemoryEntry::embedding`] are ranked by cosine similarity instead.
+//!   This crate does not compute embeddings itself — obtain them from an
+//!   embedding model (e.g. via `tpt-llm-client-core`) and attach them via
+//!   [`MemoryEntry::with_embedding`].
 //!
 //! # Features
 //!
-//! - `std` (default): Enables standard library features
+//! - `std` (default): Enables standard library features, including
+//!   [`MemoryStore::save_to_file`] / [`MemoryStore::load_from_file`]
+//!   (JSON file persistence) and [`ConcurrentMemoryStore`].
 //! - `async`: Alias for `std`
 //!
 //! # Example

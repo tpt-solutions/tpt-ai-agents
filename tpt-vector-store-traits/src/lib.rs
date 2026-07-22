@@ -1,7 +1,10 @@
-//! Standardized async traits for Qdrant, Milvus, pgvector.
+//! Standardized async traits for vector database backends.
 //!
-//! This crate defines trait abstractions for vector database operations
-//! using GATs for distance metrics and payload types without boxing.
+//! This crate defines the [`VectorStore`] trait (via `#[async_trait]`, so
+//! it's dyn-compatible) and supporting types (`Distance`, `Query`,
+//! `SearchResult`) that a backend adapter implements. No concrete adapter
+//! (Qdrant, Milvus, pgvector, etc.) ships in this crate — implement
+//! [`VectorStore`] for your own client, or wait for a reference adapter.
 //!
 //! # Features
 //!
@@ -35,7 +38,7 @@ mod traits;
 pub use error::Error;
 pub use query::{Filter, Query};
 pub use result::SearchResult;
-pub use store::VectorStore;
+pub use store::{CollectionInfo, VectorStore};
 
 /// Distance metric trait for vector similarity.
 pub trait Distance {

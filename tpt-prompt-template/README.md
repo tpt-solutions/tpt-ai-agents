@@ -5,18 +5,23 @@
 
 Safe, typed templating for prompts with compile-time validation.
 
+**When to use this crate:** you're building prompts by string substitution
+and want `{{variable}}` placeholders validated (parse errors on malformed
+templates) rather than silently producing a broken prompt.
+
 ## Features
 
 - `std` (default): Enables standard library features
-- Compile-time validation of `{{variable}}` syntax
+- Validation of `{{variable}}` syntax at parse time
 
 ## Usage
 
-```rust,ignore
-use tpt_prompt_template::{PromptTemplate, template};
+```rust
+use tpt_prompt_template::PromptTemplate;
 
 let tmpl = PromptTemplate::new("Hello {{name}}, topic: {{topic}}").unwrap();
 let rendered = tmpl.render(&[("name", "Alice"), ("topic", "Rust")]);
+assert_eq!(rendered, "Hello Alice, topic: Rust");
 ```
 
 ## License

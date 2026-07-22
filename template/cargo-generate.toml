@@ -1,0 +1,11 @@
+[template]
+description = "Scaffold a new crate for the tpt-ai-agents workspace"
+exclude = []
+
+[template.placeholders]
+crate_name = "tpt-new-crate"
+crate_description = "Description of the new crate"
+tier = "0"
+
+[pre-scripts]
+post-render = ["cargo fmt"]

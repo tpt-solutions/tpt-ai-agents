@@ -1,6 +1,6 @@
 [package]
 name = "tpt-llm-client-core"
-description = "Unified streaming HTTP/SSE client for OpenAI, Anthropic, Ollama"
+description = "Unified streaming HTTP/SSE client for OpenAI, Anthropic, Ollama with automatic retry/backoff"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
@@ -35,6 +35,13 @@ features = ["json", "stream"]
 path = "../tpt-prompt-template"
 version = "0.1.0"
 optional = true
+
+[dev-dependencies]
+criterion = { workspace = true }
+
+[[bench]]
+name = "sse_parser"
+harness = false
 
 [features]
 default = ["std", "json-sse"]

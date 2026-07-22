@@ -1,7 +1,10 @@
 //! Real HTTP transport for `SseClient` (requires the `std` feature).
 
 use crate::response::{Choice, Delta, StreamChoice, Usage};
-use crate::{ChatRequest, ChatResponse, Error, Message, Provider, Role, SseParser, StreamChunk};
+use crate::{
+    ChatRequest, ChatResponse, Error, Message, Provider, RetryConfig, Role, SseParser,
+    StreamChunk,
+};
 use alloc::boxed::Box;
 use alloc::format;
 use alloc::string::{String, ToString};
@@ -9,6 +12,39 @@ use alloc::vec::Vec;
 use futures::Stream;
 use serde::Deserialize;
 use serde_json::Value;
+
+/// Whether an error is worth retrying: connection-level failures, 429s, and
+/// 5xx provider errors. 4xx errors other than 429 (bad request, unauthorized,
+/// etc.) are not retried since a retry would fail identically.
+fn is_retryable(err: &Error) -> bool {
+    match err {
+        Error::Network(e) => e.is_timeout() || e.is_connect() || e.is_request(),
+        Error::RateLimited => true,
+        Error::Provider { code, .. } => *code >= 500,
+        _ => false,
+    }
+}
+
+/// Run `attempt` up to `config.max_attempts` times, retrying on
+/// [`is_retryable`] errors with exponential backoff between attempts.
+async fn with_retry<T, F, Fut>(config: &RetryConfig, mut attempt: F) -> Result<T, Error>
+where
+    F: FnMut() -> Fut,
+    Fut: core::future::Future<Output = Result<T, Error>>,
+{
+    let mut delay_ms = config.base_delay_ms;
+    for attempt_num in 1..=config.max_attempts {
+        match attempt().await {
+            Ok(value) => return Ok(value),
+            Err(err) if attempt_num < config.max_attempts && is_retryable(&err) => {
+                tokio::time::sleep(core::time::Duration::from_millis(delay_ms)).await;
+                delay_ms = delay_ms.saturating_mul(2);
+            }
+            Err(err) => return Err(err),
+        }
+    }
+    unreachable!("loop always returns on the final attempt")
+}
 
 /// Build the request URL for a provider.
 pub(crate) fn endpoint(base_url: &str, provider: Provider) -> String {
@@ -103,29 +139,34 @@ async fn map_error_response(status: reqwest::StatusCode, body: String) -> Error 
 }
 
 /// Send a non-streaming chat completion request and parse the provider's response
-/// into the unified [`ChatResponse`] shape.
+/// into the unified [`ChatResponse`] shape. Retries per `retry` on transient
+/// failures (connection errors, 429, 5xx).
 pub(crate) async fn send(
     client: &reqwest::Client,
     base_url: &str,
     api_key: &str,
     provider: Provider,
     request: &ChatRequest,
+    retry: &RetryConfig,
 ) -> Result<ChatResponse, Error> {
     let url = endpoint(base_url, provider);
     let body = build_body(provider, request, false);
 
-    let req = client.post(&url).json(&body);
-    let req = auth_headers(provider, api_key, req);
-    let resp = req.send().await?;
+    with_retry(retry, || async {
+        let req = client.post(&url).json(&body);
+        let req = auth_headers(provider, api_key, req);
+        let resp = req.send().await?;
 
-    let status = resp.status();
-    if !status.is_success() {
-        let text = resp.text().await.unwrap_or_default();
-        return Err(map_error_response(status, text).await);
-    }
+        let status = resp.status();
+        if !status.is_success() {
+            let text = resp.text().await.unwrap_or_default();
+            return Err(map_error_response(status, text).await);
+        }
 
-    let text = resp.text().await?;
-    parse_response(provider, &text)
+        let text = resp.text().await?;
+        parse_response(provider, &text)
+    })
+    .await
 }
 
 fn parse_response(provider: Provider, text: &str) -> Result<ChatResponse, Error> {
@@ -223,19 +264,28 @@ pub(crate) async fn stream(
     api_key: &str,
     provider: Provider,
     request: &ChatRequest,
+    retry: &RetryConfig,
 ) -> Result<impl Stream<Item = Result<StreamChunk, Error>>, Error> {
     let url = endpoint(base_url, provider);
     let body = build_body(provider, request, true);
 
-    let req = client.post(&url).json(&body);
-    let req = auth_headers(provider, api_key, req);
-    let resp = req.send().await?;
+    // Retries cover establishing the stream (the initial request/response
+    // handshake) only — once bytes start arriving, a mid-stream failure is
+    // surfaced as an item in the stream rather than retried transparently,
+    // since partial output may already have been yielded to the caller.
+    let resp = with_retry(retry, || async {
+        let req = client.post(&url).json(&body);
+        let req = auth_headers(provider, api_key, req);
+        let resp = req.send().await?;
 
-    let status = resp.status();
-    if !status.is_success() {
-        let text = resp.text().await.unwrap_or_default();
-        return Err(map_error_response(status, text).await);
-    }
+        let status = resp.status();
+        if !status.is_success() {
+            let text = resp.text().await.unwrap_or_default();
+            return Err(map_error_response(status, text).await);
+        }
+        Ok(resp)
+    })
+    .await?;
 
     let byte_stream: core::pin::Pin<Box<dyn Stream<Item = reqwest::Result<bytes::Bytes>> + Send>> =
         Box::pin(resp.bytes_stream());
@@ -552,5 +602,77 @@ mod tests {
         let chunk = parse_ollama_stream_line(line).unwrap().unwrap();
         assert_eq!(chunk.choices[0].delta.content.as_deref(), Some("done text"));
         assert_eq!(chunk.choices[0].finish_reason.as_deref(), Some("stop"));
+    }
+
+    #[test]
+    fn test_is_retryable() {
+        assert!(is_retryable(&Error::RateLimited));
+        assert!(is_retryable(&Error::Provider {
+            code: 503,
+            message: String::new()
+        }));
+        assert!(!is_retryable(&Error::Provider {
+            code: 400,
+            message: String::new()
+        }));
+        assert!(!is_retryable(&Error::Unauthorized));
+        assert!(!is_retryable(&Error::InvalidRequest(String::new())));
+    }
+
+    #[tokio::test]
+    async fn test_with_retry_succeeds_after_transient_failures() {
+        let attempts = core::cell::Cell::new(0);
+        let config = RetryConfig {
+            max_attempts: 3,
+            base_delay_ms: 1,
+        };
+        let result: Result<&str, Error> = with_retry(&config, || {
+            attempts.set(attempts.get() + 1);
+            async {
+                if attempts.get() < 3 {
+                    Err(Error::RateLimited)
+                } else {
+                    Ok("ok")
+                }
+            }
+        })
+        .await;
+
+        assert_eq!(result.unwrap(), "ok");
+        assert_eq!(attempts.get(), 3);
+    }
+
+    #[tokio::test]
+    async fn test_with_retry_gives_up_after_max_attempts() {
+        let attempts = core::cell::Cell::new(0);
+        let config = RetryConfig {
+            max_attempts: 2,
+            base_delay_ms: 1,
+        };
+        let result: Result<&str, Error> = with_retry(&config, || {
+            attempts.set(attempts.get() + 1);
+            async { Err(Error::RateLimited) }
+        })
+        .await;
+
+        assert!(result.is_err());
+        assert_eq!(attempts.get(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_with_retry_does_not_retry_non_retryable_errors() {
+        let attempts = core::cell::Cell::new(0);
+        let config = RetryConfig {
+            max_attempts: 5,
+            base_delay_ms: 1,
+        };
+        let result: Result<&str, Error> = with_retry(&config, || {
+            attempts.set(attempts.get() + 1);
+            async { Err(Error::Unauthorized) }
+        })
+        .await;
+
+        assert!(result.is_err());
+        assert_eq!(attempts.get(), 1);
     }
 }

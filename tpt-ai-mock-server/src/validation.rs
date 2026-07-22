@@ -1,7 +1,10 @@
 use crate::Error;
 
 /// Validate an incoming request schema.
-#[allow(dead_code)]
+///
+/// Only called from the `std`-gated server loop; unused (and so
+/// `#[allow(dead_code)]`) without the `std` feature.
+#[cfg_attr(not(feature = "std"), allow(dead_code))]
 pub fn validate_request(body: &str) -> core::result::Result<(), Error> {
     let parsed: core::result::Result<serde_json::Value, _> = serde_json::from_str(body);
     match parsed {

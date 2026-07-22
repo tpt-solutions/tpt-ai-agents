@@ -1,3 +1,14 @@
+[package]
+name = "tpt-ai-agents-examples"
+description = "Root workspace package hosting cross-crate examples/ (not published)"
+publish = false
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
 [workspace]
 resolver = "2"
 members = [
@@ -29,3 +40,17 @@ thiserror = { version = "2", default-features = false }
 futures = { version = "0.3", default-features = false }
 bytes = "1"
 pin-project-lite = "0.2"
+
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[dev-dependencies]
+tpt-rag-pipeline = { path = "tpt-rag-pipeline" }
+tpt-agent-memory = { path = "tpt-agent-memory" }
+tpt-llm-client-core = { path = "tpt-llm-client-core" }
+tpt-tool-use-macros = { path = "tpt-tool-use-macros" }
+tpt-ai-mock-server = { path = "tpt-ai-mock-server" }
+tpt-vector-store-traits = { path = "tpt-vector-store-traits" }
+async-trait = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "net", "time"] }

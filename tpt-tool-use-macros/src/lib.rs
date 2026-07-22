@@ -5,12 +5,13 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```
 //! use tpt_tool_use_macros::tool;
 //!
 //! /// Get the current weather for a location.
 //! #[tool]
 //! fn get_weather(location: String, units: Option<String>) -> String {
+//!     let _ = units;
 //!     format!("Weather for {} at 72°F", location)
 //! }
 //!
@@ -19,6 +20,8 @@
 //! // - `GetWeatherArgs`, a `Serialize + Deserialize` struct mirroring the parameters
 //! // - `get_weather_call(args_json: &str) -> Result<String, serde_json::Error>`,
 //! //   which deserializes JSON tool-call arguments and invokes `get_weather`
+//! let result = get_weather_call(r#"{"location":"Austin","units":null}"#).unwrap();
+//! assert_eq!(result, "Weather for Austin at 72°F");
 //! //
 //! // Requires `serde` and `serde_json` as dependencies of the crate using `#[tool]`.
 //! ```

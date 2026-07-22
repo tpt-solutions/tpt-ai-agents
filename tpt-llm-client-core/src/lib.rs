@@ -1,7 +1,9 @@
 //! Unified streaming HTTP/SSE client for OpenAI, Anthropic, Ollama.
 //!
-//! This crate provides a robust SSE parser that handles partial JSON chunks
-//! and network retries automatically.
+//! This crate provides a robust SSE parser that handles partial JSON chunks,
+//! and retries requests automatically on transient failures (connection
+//! errors, HTTP 429, HTTP 5xx) with exponential backoff — see [`RetryConfig`]
+//! and [`SseClient::with_retry`].
 //!
 //! # Features
 //!
@@ -12,22 +14,21 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
+//! ```no_run
 //! use tpt_llm_client_core::{SseClient, ChatRequest, Message, Role};
 //!
-//! #[tokio::main]
-//! async fn main() {
-//!     let client = SseClient::openai("https://api.openai.com/v1", "sk-...");
-//!     let request = ChatRequest {
-//!         model: "gpt-4o-mini".into(),
-//!         messages: vec![Message { role: Role::User, content: "Hello".into() }],
-//!         temperature: None,
-//!         max_tokens: None,
-//!         stream: None,
-//!     };
-//!     let response = client.send(&request).await.unwrap();
-//!     println!("{:?}", response);
-//! }
+//! # async fn run() {
+//! let client = SseClient::openai("https://api.openai.com/v1", "sk-...");
+//! let request = ChatRequest {
+//!     model: "gpt-4o-mini".into(),
+//!     messages: vec![Message { role: Role::User, content: "Hello".into() }],
+//!     temperature: None,
+//!     max_tokens: None,
+//!     stream: None,
+//! };
+//! let response = client.send(&request).await.unwrap();
+//! println!("{:?}", response);
+//! # }
 //! ```
 #![no_std]
 
@@ -57,6 +58,27 @@ pub struct SseClient {
     api_key: alloc::string::String,
     provider: Provider,
     http: reqwest::Client,
+    retry: RetryConfig,
+}
+
+/// Retry policy for transient request failures (connection errors, HTTP
+/// 429, HTTP 5xx). Non-retryable errors (4xx other than 429, JSON/parse
+/// errors) are always returned immediately regardless of this config.
+#[derive(Debug, Clone, Copy)]
+pub struct RetryConfig {
+    /// Total attempts, including the first. `1` disables retrying.
+    pub max_attempts: u32,
+    /// Delay before the first retry; doubles after each subsequent attempt.
+    pub base_delay_ms: u64,
+}
+
+impl Default for RetryConfig {
+    fn default() -> Self {
+        Self {
+            max_attempts: 3,
+            base_delay_ms: 200,
+        }
+    }
 }
 
 /// Supported LLM providers.
@@ -75,6 +97,7 @@ impl SseClient {
             api_key: alloc::string::String::from(api_key),
             provider: Provider::OpenAi,
             http: reqwest::Client::new(),
+            retry: RetryConfig::default(),
         }
     }
 
@@ -84,6 +107,7 @@ impl SseClient {
             api_key: alloc::string::String::from(api_key),
             provider: Provider::Anthropic,
             http: reqwest::Client::new(),
+            retry: RetryConfig::default(),
         }
     }
 
@@ -93,10 +117,18 @@ impl SseClient {
             api_key: alloc::string::String::new(),
             provider: Provider::Ollama,
             http: reqwest::Client::new(),
+            retry: RetryConfig::default(),
         }
     }
 
-    /// Send a non-streaming chat completion request.
+    /// Override the default retry policy (3 attempts, 200ms base backoff).
+    pub fn with_retry(mut self, retry: RetryConfig) -> Self {
+        self.retry = retry;
+        self
+    }
+
+    /// Send a non-streaming chat completion request. Transient failures are
+    /// retried per the client's [`RetryConfig`].
     pub async fn send(&self, request: &ChatRequest) -> Result<ChatResponse> {
         http::send(
             &self.http,
@@ -104,12 +136,16 @@ impl SseClient {
             &self.api_key,
             self.provider,
             request,
+            &self.retry,
         )
         .await
     }
 
     /// Send a streaming chat completion request, returning a stream of
     /// unified [`StreamChunk`] items as they arrive from the provider.
+    /// Establishing the stream is retried per the client's [`RetryConfig`];
+    /// once streaming begins, a mid-stream failure is yielded as an `Err`
+    /// item rather than retried.
     pub async fn stream(
         &self,
         request: &ChatRequest,
@@ -120,6 +156,7 @@ impl SseClient {
             &self.api_key,
             self.provider,
             request,
+            &self.retry,
         )
         .await
     }

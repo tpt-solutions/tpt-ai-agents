@@ -34,7 +34,7 @@ Workspace of 10 independent, composable Rust crates for LLM/agent infrastructure
 
 ### tpt-llm-client-core
 - [x] Robust SSE parser (`SseParser::feed`/`flush`, 3 tests)
-- [ ] Automatic network retries (not yet implemented)
+- [x] Automatic network retries (exponential backoff via `RetryConfig`, 2026-07-22)
 - [x] `std`/`async` feature gates real networking
 
 ### tpt-vector-store-traits
@@ -48,7 +48,7 @@ Workspace of 10 independent, composable Rust crates for LLM/agent infrastructure
 
 ### tpt-tool-use-macros
 - [x] JSON schema generation from Rust function signatures
-- [ ] Automatic serialization/deserialization of tool arguments
+- [x] Automatic serialization/deserialization of tool arguments (see §4.1 — was implemented but left unchecked here; reconciled 2026-07-22)
 - [x] 2 integration tests
 
 ### tpt-prompt-template
@@ -63,7 +63,16 @@ Workspace of 10 independent, composable Rust crates for LLM/agent infrastructure
 - [x] 5 tests
 
 ### tpt-agent-memory
-- [x] Memory store with semantic search (1 test + 1 doctest)
+- [x] Memory store with keyword (substring) search always available, plus
+      real cosine-similarity embedding search via `SearchQuery::with_embedding`
+      / `MemoryEntry::with_embedding` (2026-07-22) — previously the doc
+      claimed "semantic search" but the implementation was substring-only
+- [x] File-based persistence: `MemoryStore::save_to_file`/`load_from_file`
+      (JSON, `std`-gated, 2026-07-22) — previously claimed but unimplemented
+- [x] `MemoryEntry` unique-ID counter now uses `AtomicU64` instead of an
+      unsynchronized `static mut` (2026-07-22) — the old version was a data
+      race when entries were created from multiple threads via
+      `ConcurrentMemoryStore`
 - [x] Graph with validated edges and neighbor lookup (4 tests)
 - [x] Temporal decay (1 test)
 - [x] Unique ID generation (2 tests)
@@ -74,6 +83,17 @@ Workspace of 10 independent, composable Rust crates for LLM/agent infrastructure
 
 ### tpt-ai-mock-server
 - [x] Request validation (2 tests)
+- [x] **Real request serving** (2026-07-22) — `MockServer::start()` previously
+      only bound a `TcpListener` and returned its address; nothing ever
+      accepted a connection, so `Router::find`/`validate_request` were dead
+      code and the crate could not actually serve a mock response to a real
+      HTTP client despite being described as a "mock server for testing LLM
+      integrations." Implemented a background accept loop that parses
+      minimal HTTP/1.1 requests, validates them, and replies with either a
+      JSON body or an SSE stream from the queued `RecordedResponse`.
+      `Router::take` now serves queued responses per path in FIFO order
+      (supports scripting multi-turn conversations). Verified end-to-end
+      against a real `reqwest` client in `tests/serves_http.rs` (4 tests).
 
 ## 3. Cross-cutting / release process
 
@@ -115,12 +135,50 @@ Workspace of 10 independent, composable Rust crates for LLM/agent infrastructure
       derived from the parameter *type* instead of its *name* (e.g. `"string"` instead of
       `"location"`), and the schema builder emitted a trailing comma making it invalid JSON.
 
-### 4.2 Future work
-- Root integration example with `tpt-ai-mock-server` for CI-testable demos
-- `cargo-generate` template for new crate scaffolding
-- CI job to detect `rust,ignore`/`unimplemented!()`/`todo!()` regressions
-- Per-crate maturity indicators in root README
-- `GETTING_STARTED.md` and `docs/ARCHITECTURE.md`
-- End-to-end example wiring `llm-client-core` + `tool-use-macros` + `agent-memory` +
-  `rag-pipeline` together now that real HTTP exists
-- Reference vector-store adapter example (e.g. Qdrant) for `tpt-vector-store-traits`
+### 4.2 Future work (in progress — platform review 2026-07-22)
+
+Adoption / docs:
+- [x] `GETTING_STARTED.md` (root) — smallest-possible working quickstart
+- [x] `docs/ARCHITECTURE.md` — tier system, crate composition, no_std philosophy
+- [x] End-to-end example wiring `llm-client-core` + `tool-use-macros` +
+      `agent-memory` + `rag-pipeline` together, served by `tpt-ai-mock-server`
+      so it's CI-testable with no API key (`examples/full_agent_loop.rs`,
+      2026-07-22). This also required fixing two real bugs found along the
+      way: the root `examples/` directory was never wired into the build
+      (root `Cargo.toml` was a pure virtual workspace with no `[package]`,
+      so `cargo build --example` failed for the *existing* `rag_memory.rs`
+      example too — fixed by adding a `publish = false` root package), and
+      `tpt-ai-mock-server`'s `MockServer::start()` bound a `TcpListener` but
+      never accepted a connection (see its own entry below).
+- [x] Expand thin per-crate READMEs (runnable snippet + "when to use this crate")
+- [ ] `cargo-generate` template for new crate scaffolding
+- [x] Audit and fix `rust,ignore` doctests (2026-07-22): all 5 that were
+      `rust,ignore` are now real (`no_run` or fully executed) doctests —
+      `tpt-llm-client-core`, `tpt-ai-mock-server`, `tpt-eval-harness`,
+      `tpt-onnx-runtime-utils`, `tpt-tool-use-macros`. Found and fixed two
+      more doc/impl mismatches along the way: `tpt-tokenizers-fast`'s doc
+      and README referenced a `BpeTokenizer::from_file` that doesn't exist
+      (real constructor is `BpeTokenizer::new(vocab, merges)`), and
+      `tpt-llm-client-core`'s README used a `client.chat_completion(...)`
+      method that doesn't exist (real API is `client.send(&request)` /
+      `client.stream(&request)`).
+- [x] Fixed `tpt-vector-store-traits` doc/impl overclaim: crate doc and
+      description said "GATs ... without boxing," but `VectorStore` uses
+      `#[async_trait]`, which boxes futures and does not use GATs. Doc and
+      description corrected to describe what's actually there (2026-07-22).
+
+CI / hygiene:
+- [ ] Cross-platform CI matrix (currently `ubuntu-latest` only; repo is developed on Windows)
+- [ ] CI job to detect `rust,ignore`/`unimplemented!()`/`todo!()` regressions
+- [ ] Dependabot/Renovate config for dependency updates
+- [ ] Code coverage reporting (`cargo-llvm-cov` + badge)
+
+Innovative / stretch (confirm scope before building):
+- [ ] Per-crate maturity indicators in root README
+- [ ] Reference vector-store adapter example (e.g. Qdrant/pgvector) for
+      `tpt-vector-store-traits`, and wire it into `tpt-agent-memory`'s
+      embedding search as a real backend
+- [ ] `tpt-agent-cli` example binary (workspace currently has zero `[[bin]]`
+      targets) — runnable chat loop over the agent-loop example
+- [ ] `criterion` benchmarks for `tpt-tokenizers-fast` and the SSE parser in
+      `tpt-llm-client-core`
