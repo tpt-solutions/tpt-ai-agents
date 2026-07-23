@@ -25,6 +25,7 @@ members = [
     "tpt-vector-store-qdrant",
     "tpt-vector-store-pgvector",
     "tpt-embeddings-client",
+    "tpt-agent-graph",
 ]
 
 [workspace.package]
@@ -54,6 +55,7 @@ tpt-tool-use-macros = { path = "tpt-tool-use-macros" }
 tpt-ai-mock-server = { path = "tpt-ai-mock-server" }
 tpt-vector-store-traits = { path = "tpt-vector-store-traits" }
 tpt-vector-store-qdrant = { path = "tpt-vector-store-qdrant" }
+tpt-agent-graph = { path = "tpt-agent-graph" }
 async-trait = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true, features = ["std"] }

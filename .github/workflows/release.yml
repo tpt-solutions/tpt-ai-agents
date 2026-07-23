@@ -23,8 +23,9 @@ jobs:
           TAG="${GITHUB_REF#refs/tags/v}"
           for dir in tpt-prompt-template tpt-vector-store-traits tpt-onnx-runtime-utils \
                      tpt-tokenizers-fast tpt-tool-use-macros tpt-ai-mock-server \
-                     tpt-llm-client-core tpt-rag-pipeline tpt-agent-memory tpt-eval-harness \
-                     tpt-vector-store-qdrant; do
+                     tpt-llm-client-core tpt-embeddings-client tpt-agent-graph \
+                     tpt-rag-pipeline tpt-agent-memory tpt-eval-harness \
+                     tpt-vector-store-qdrant tpt-vector-store-pgvector; do
             VERSION=$(grep '^version' "$dir/Cargo.toml" | head -1 | sed 's/.*"\(.*\)".*/\1/')
             if [ "$VERSION" != "$TAG" ]; then
               echo "ERROR: $dir version ($VERSION) does not match tag ($TAG)"
@@ -37,7 +38,7 @@ jobs:
         run: |
           for crate in tpt-prompt-template tpt-vector-store-traits tpt-onnx-runtime-utils \
                        tpt-tokenizers-fast tpt-tool-use-macros tpt-ai-mock-server \
-                       tpt-llm-client-core; do
+                       tpt-llm-client-core tpt-embeddings-client tpt-agent-graph; do
             echo "Publishing $crate..."
             cargo publish -p "$crate"
             echo "Waiting for crates.io index update..."
@@ -46,7 +47,7 @@ jobs:
 
       - name: Publish Tier 1 crates
         run: |
-          for crate in tpt-rag-pipeline tpt-agent-memory tpt-eval-harness tpt-vector-store-qdrant; do
+          for crate in tpt-rag-pipeline tpt-agent-memory tpt-eval-harness tpt-vector-store-qdrant tpt-vector-store-pgvector; do
             echo "Publishing $crate..."
             cargo publish -p "$crate"
             echo "Waiting for crates.io index update..."

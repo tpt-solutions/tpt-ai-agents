@@ -26,6 +26,7 @@ See [GETTING_STARTED.md](GETTING_STARTED.md) for a quickstart and
 | `tpt-ai-mock-server` | [![crates.io](https://img.shields.io/crates/v/tpt-ai-mock-server.svg)](https://crates.io/crates/tpt-ai-mock-server) | **Production** | Mock server for testing LLM integrations | 0 |
 | `tpt-vector-store-pgvector` | [![crates.io](https://img.shields.io/crates/v/tpt-vector-store-pgvector.svg)](https://crates.io/crates/tpt-vector-store-pgvector) | **Beta** | Real `VectorStore` adapter backed by pgvector (PostgreSQL) | 1 |
 | `tpt-embeddings-client` | [![crates.io](https://img.shields.io/crates/v/tpt-embeddings-client.svg)](https://crates.io/crates/tpt-embeddings-client) | **Beta** | Unified async client for OpenAI, Cohere, and custom embedding APIs | 0 |
+| `tpt-agent-graph` | [![crates.io](https://img.shields.io/crates/v/tpt-agent-graph.svg)](https://crates.io/crates/tpt-agent-graph) | **Beta** | Thin state-machine/DAG orchestration for LLM agent turns | 0 |
 
 **Maturity levels:**
 - **Production** — full implementation, comprehensive tests, real-world usage expected
@@ -35,7 +36,7 @@ See [GETTING_STARTED.md](GETTING_STARTED.md) for a quickstart and
 
 Publish by tier, waiting for crates.io propagation between tiers:
 
-**Tier 0** (no internal deps): `tpt-tokenizers-fast`, `tpt-llm-client-core`, `tpt-vector-store-traits`, `tpt-prompt-template`, `tpt-tool-use-macros`, `tpt-onnx-runtime-utils`, `tpt-ai-mock-server`, `tpt-embeddings-client`
+**Tier 0** (no internal deps): `tpt-tokenizers-fast`, `tpt-llm-client-core`, `tpt-vector-store-traits`, `tpt-prompt-template`, `tpt-tool-use-macros`, `tpt-onnx-runtime-utils`, `tpt-ai-mock-server`, `tpt-embeddings-client`, `tpt-agent-graph`
 
 **Tier 1** (depend on Tier 0): `tpt-rag-pipeline`, `tpt-agent-memory`, `tpt-eval-harness`, `tpt-vector-store-qdrant`, `tpt-vector-store-pgvector`
 

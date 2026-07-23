@@ -221,21 +221,50 @@ Requires the `std` feature (uses `tract-onnx` for pure-Rust inference, no system
 
 **Crates:** `tpt-agent-graph`, `tpt-llm-client-core`, `tpt-tool-use-macros`
 
-Use `tpt-agent-graph` to build a state machine that wires LLM calls, tool execution, and memory together:
+Use `tpt-agent-graph` to express "call the model, run any requested tools,
+call the model again" as named, testable nodes instead of inline control
+flow, and `ToolRegistry` to dispatch a tool call to its handler by name
+(closing the gap where `#[tool]` alone gives you a `<fn>_call` per tool but no
+way to look one up by name once there's more than one):
 
 ```rust
-use tpt_agent_graph::{AgentGraph, NodeId, EdgeKind};
+use tpt_agent_graph::{AgentGraph, Node, NodeOutcome, ToolRegistry};
 
-let mut graph = AgentGraph::new();
-let llm = graph.add_node("llm_call");
-let tool = graph.add_node("tool_exec");
-let done = graph.add_node("done");
-graph.add_edge(llm, tool, EdgeKind::ToolRequested);
-graph.add_edge(llm, done, EdgeKind::Finished);
-graph.add_edge(tool, llm, EdgeKind::ToolResult);
+struct CallModel;
+impl Node<Context> for CallModel {
+    fn name(&self) -> &str { "call_model" }
+    fn run(&self, ctx: &mut Context) -> NodeOutcome {
+        // send ctx.conversation to the model; if it returned tool_calls,
+        // stash them on ctx and continue to "run_tools", otherwise halt
+        // with the final answer.
+        if ctx.has_pending_tool_calls() {
+            NodeOutcome::goto("run_tools")
+        } else {
+            NodeOutcome::Halt
+        }
+    }
+}
+
+let mut tools = ToolRegistry::new();
+tools.register("get_weather", |args| get_weather_call(args).map_err(|e| e.to_string()));
+
+let mut graph = AgentGraph::new("call_model");
+graph.add_node(CallModel);
+// ...add a "run_tools" node that calls tools.dispatch(name, args_json)
+// for each pending call, then loops back to "call_model".
+
+let path = graph.run(&mut ctx).unwrap();
 ```
 
-**See:** crate docs at `tpt-agent-graph/src/lib.rs`
+Each node's `run()` returns the name of the next node directly
+(`NodeOutcome::Goto`/`Halt`) rather than the graph resolving edges from a
+separate topology table — a deliberately thinner design than a full
+LangGraph-style graph runtime (see `rust-langgraph` on crates.io if you need
+checkpoints, conditional-edge tables, or a Pregel-style execution model).
+Cycles are allowed (e.g. retry loops) and guarded by a step budget
+(`AgentGraph::with_step_budget`, default 1000).
+
+**See:** [`examples/agent_graph_loop.rs`](../examples/agent_graph_loop.rs), crate docs at `tpt-agent-graph/src/lib.rs`
 
 ## Deploy Qdrant for development
 

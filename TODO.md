@@ -254,20 +254,48 @@ Gaps / missing features:
 - [x] Embedding-provider client crate (e.g. `tpt-embeddings-client`) for
       OpenAI/Cohere/local embedding calls — currently every consumer
       hand-rolls this to feed `tpt-rag-pipeline`/`tpt-agent-memory`
-- [ ] Audit whether `tpt-tool-use-macros` output is actually wired end-to-end
+- [x] Audit whether `tpt-tool-use-macros` output is actually wired end-to-end
       into an LLM function-calling response parser anywhere besides the
-      example, or if that loop still requires manual glue
+      example, or if that loop still requires manual glue (2026-07-23):
+      confirmed the parsing half is real — `tpt-llm-client-core`'s
+      `response.rs`/`parser.rs` produce structured `ToolCall { id, function:
+      { name, arguments } }` values from both OpenAI- and Anthropic-shaped
+      responses (including streaming deltas), and `examples/full_agent_loop.rs`
+      exercises the full round-trip against a real `#[tool]`-generated
+      `get_weather_call`. However, the *dispatch* half still requires manual
+      glue: `#[tool]` only generates a `<fn>_call(json)` function per tool,
+      with no generated registry or `match tool_call.function.name { ... }`
+      wiring across multiple tools — every consumer with more than one tool
+      must hand-write that name-to-function routing themselves (the example
+      only has one tool, so it skips the lookup entirely and calls
+      `get_weather_call` directly). Documented rather than fixed here since a
+      registry/dispatch-table generator is a design decision (see the new
+      `tpt-agent-graph` stretch-goal item below, which is the more natural
+      home for multi-tool dispatch than bolting it onto the macro crate).
 - [x] `cargo semver-checks` in CI (still unchecked from §1/§3 — close before
       or immediately after first publish)
 - [ ] Post-publish: confirm docs.rs builds succeed for every crate, all
       feature combos (still unchecked from §3)
 
 Innovative additions:
-- [ ] `tpt-agent-graph` (or similar) — a thin state-machine/DAG orchestration
-      crate tying `llm-client-core` + `tool-use-macros` + `agent-memory`
-      together as a reusable "tier 2" crate; today that composition only
-      exists as `examples/full_agent_loop.rs`, not something consumers can
-      depend on
+- [x] `tpt-agent-graph` — a thin state-machine orchestration crate (2026-07-23):
+      `AgentGraph<C>`/`Node<C>`/`NodeOutcome` where each node reads/writes a
+      caller-defined context and returns the name of the next node to run (or
+      halts), with cycles allowed and guarded by a step budget
+      (`StepBudgetExceeded`). Also ships `ToolRegistry`, closing the gap found
+      in the tool-use-macros audit above: dispatches a model's tool call to a
+      handler by name, which `#[tool]` alone doesn't provide once more than
+      one tool is registered. Deliberately generic/decoupled (no dependency on
+      `llm-client-core`/`tool-use-macros`/`agent-memory`, stays `no_std`) —
+      the concrete wiring lives in `examples/agent_graph_loop.rs` (multi-tool
+      version of `examples/full_agent_loop.rs`, verified end-to-end). Scoped
+      down from an initially-considered edge/`NodeId`/`EdgeKind` topology
+      design (a stale placeholder sketch already sitting in
+      `docs/COOKBOOK.md` from before this crate existed) after checking
+      crates.io: that fuller LangGraph-style graph-runtime space is already
+      served by `rust-langgraph`/`adk-graph`/`rrag_graph`, so duplicating it
+      wasn't worthwhile — this crate stays intentionally thinner than those.
+      15 tests (10 unit + doctests) + 1 workspace example.
 - [x] Streaming tool-call support — parse partial tool-call argument deltas
       as emitted by OpenAI/Anthropic streaming APIs, not just complete JSON
 - [x] Shared cost/token-usage tracking hook in `tpt-llm-client-core` so
