@@ -13,7 +13,7 @@ keywords = ["onnx", "inference", "ml", "tensor", "edge"]
 categories = ["machine-learning", "memory-management"]
 
 [dependencies.tract-onnx]
-version = "0.21"
+version = "0.23"
 optional = true
 
 [dev-dependencies]
