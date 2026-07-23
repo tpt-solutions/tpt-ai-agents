@@ -9,7 +9,7 @@
 
 use futures::StreamExt;
 use tpt_ai_mock_server::{MockServer, RecordedResponse, SseChunk};
-use tpt_llm_client_core::{ChatRequest, Message, Role, SseClient};
+use tpt_llm_client_core::{ChatRequest, Message, SseClient};
 
 #[tokio::main]
 async fn main() {
@@ -43,13 +43,11 @@ async fn main() {
     let client = SseClient::openai(&format!("http://{addr}/v1"), "sk-mock");
     let request = ChatRequest {
         model: "gpt-4o-mini".into(),
-        messages: vec![Message {
-            role: Role::User,
-            content: "Tell me about streaming.".into(),
-        }],
+        messages: vec![Message::user("Tell me about streaming.")],
         temperature: None,
         max_tokens: None,
         stream: Some(true),
+        tools: None,
     };
 
     let mut stream = client

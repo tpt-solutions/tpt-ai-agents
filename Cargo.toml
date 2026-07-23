@@ -24,6 +24,7 @@ members = [
     "tpt-ai-mock-server",
     "tpt-vector-store-qdrant",
     "tpt-vector-store-pgvector",
+    "tpt-embeddings-client",
 ]
 
 [workspace.package]

@@ -77,65 +77,35 @@ impl VectorStore for PgVectorStore {
     async fn search(&self, query: &Query) -> Result<Vec<SearchResult<Self::Payload>>, Error> {
         let embed = pgvector::Vector::from(query.vector.clone());
 
-        // All queries use dynamic table names (validated at construction,
-        // never from untrusted input at query time). We use `raw_sql` which
-        // accepts dynamic SQL, then bind parameters normally.
+        let mut builder: sqlx::QueryBuilder<sqlx::Postgres> =
+            sqlx::QueryBuilder::new(alloc::format!(
+                "SELECT id, 1 - (embedding <=> $1) AS score, payload FROM {} ORDER BY embedding <=> $1",
+                self.table
+            ));
+        builder.push_bind(embed);
+
+        let mut param_idx = 1;
+        let has_filter = query.filter.as_ref().is_some_and(|f| !f.must.is_empty());
+        if has_filter {
+            builder.push(" WHERE ");
+            let mut separated = builder.separated(" AND ");
+            for cond in &query.filter.as_ref().unwrap().must {
+                separated.push(alloc::format!(
+                    "payload->>'{}' {} ",
+                    cond.key,
+                    filter_op_to_sql(&cond.op),
+                ));
+                param_idx += 1;
+                separated.push_bind_unseparated(alloc::format!("${}", param_idx));
+            }
+        }
+
+        param_idx += 1;
+        builder.push(alloc::format!(" LIMIT ${}", param_idx));
+        builder.push_bind(query.limit as i64);
+
         let rows: Vec<(String, f32, Option<serde_json::Value>)> =
-            if let Some(ref filter) = query.filter {
-                if filter.must.is_empty() {
-                    let sql = alloc::format!(
-                        "SELECT id, 1 - (embedding <=> $1) AS score, payload \
-                         FROM {} \
-                         ORDER BY embedding <=> $1 \
-                         LIMIT $2",
-                        self.table
-                    );
-                    sqlx::raw_sql(&sql)
-                        .bind(embed)
-                        .bind(query.limit as i64)
-                        .fetch_all(&self.pool)
-                        .await?
-                } else {
-                    let mut conditions = Vec::new();
-                    for cond in &filter.must {
-                        let idx = 3 + conditions.len();
-                        conditions.push(alloc::format!(
-                            "payload->>'{}' {} ${}",
-                            cond.key,
-                            filter_op_to_sql(&cond.op),
-                            idx
-                        ));
-                    }
-                    let where_clause = conditions.join(" AND ");
-                    let sql = alloc::format!(
-                        "SELECT id, 1 - (embedding <=> $1) AS score, payload \
-                         FROM {} \
-                         WHERE {} \
-                         ORDER BY embedding <=> $1 \
-                         LIMIT $2",
-                        self.table,
-                        where_clause
-                    );
-                    sqlx::raw_sql(&sql)
-                        .bind(embed)
-                        .bind(query.limit as i64)
-                        .fetch_all(&self.pool)
-                        .await?
-                }
-            } else {
-                let sql = alloc::format!(
-                    "SELECT id, 1 - (embedding <=> $1) AS score, payload \
-                     FROM {} \
-                     ORDER BY embedding <=> $1 \
-                     LIMIT $2",
-                    self.table
-                );
-                sqlx::raw_sql(&sql)
-                    .bind(embed)
-                    .bind(query.limit as i64)
-                    .fetch_all(&self.pool)
-                    .await?
-            };
+            builder.build_query_as().fetch_all(&self.pool).await?;
 
         Ok(rows
             .into_iter()
@@ -162,50 +132,41 @@ impl VectorStore for PgVectorStore {
             .into());
         }
 
-        let sql = alloc::format!(
-            "INSERT INTO {} (id, embedding, payload) VALUES ($1, $2, $3) \
-             ON CONFLICT (id) DO UPDATE SET embedding = EXCLUDED.embedding, payload = EXCLUDED.payload",
-            self.table
-        );
         for i in 0..ids.len() {
             let embed = pgvector::Vector::from(vectors[i].to_vec());
             let payload_json = payloads[i]
                 .map(|p| (*p).clone())
                 .unwrap_or(serde_json::Value::Null);
-            sqlx::raw_sql(&sql)
-                .bind(ids[i])
-                .bind(embed)
-                .bind(payload_json)
-                .execute(&self.pool)
-                .await?;
+            let mut builder: sqlx::QueryBuilder<sqlx::Postgres> =
+                sqlx::QueryBuilder::new(alloc::format!(
+                    "INSERT INTO {} (id, embedding, payload) VALUES ($1, $2, $3) \
+                     ON CONFLICT (id) DO UPDATE SET embedding = EXCLUDED.embedding, payload = EXCLUDED.payload",
+                    self.table
+                ));
+            builder.push_bind(ids[i]);
+            builder.push_bind(embed);
+            builder.push_bind(payload_json);
+            builder.build().execute(&self.pool).await?;
         }
         Ok(())
     }
 
     async fn delete(&self, ids: &[&str]) -> Result<(), Error> {
-        let params: Vec<String> = ids
-            .iter()
-            .enumerate()
-            .map(|(i, _)| alloc::format!("${}", i + 1))
-            .collect();
-        let sql = alloc::format!(
-            "DELETE FROM {} WHERE id IN ({})",
-            self.table,
-            params.join(", ")
-        );
-        let mut q = sqlx::raw_sql(&sql);
+        let mut builder: sqlx::QueryBuilder<sqlx::Postgres> =
+            sqlx::QueryBuilder::new(alloc::format!("DELETE FROM {} WHERE id IN (", self.table));
+        let mut separated = builder.separated(", ");
         for id in ids {
-            q = q.bind(id);
+            separated.push_bind(*id);
         }
-        q.execute(&self.pool).await?;
+        separated.push_unseparated(")");
+        builder.build().execute(&self.pool).await?;
         Ok(())
     }
 
     async fn info(&self) -> Result<CollectionInfo, Error> {
-        let sql = alloc::format!("SELECT COUNT(*) FROM {}", self.table);
-        let row: (i64,) = sqlx::raw_sql(&sql)
-            .fetch_one(&self.pool)
-            .await?;
+        let mut builder: sqlx::QueryBuilder<sqlx::Postgres> =
+            sqlx::QueryBuilder::new(alloc::format!("SELECT COUNT(*) FROM {}", self.table));
+        let row: (i64,) = builder.build_query_scalar().fetch_one(&self.pool).await?;
 
         Ok(CollectionInfo {
             name: self.table.clone(),

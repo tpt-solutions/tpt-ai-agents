@@ -10,7 +10,7 @@
 
 use tpt_agent_memory::{MemoryEntry, MemoryStore, SearchQuery};
 use tpt_ai_mock_server::{MockServer, RecordedResponse};
-use tpt_llm_client_core::{ChatRequest, Message, Role, SseClient};
+use tpt_llm_client_core::{ChatRequest, Message, SseClient};
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -97,8 +97,10 @@ fn main() {
         };
 
         history.push(Message {
-            role: Role::User,
-            content: format!("{input}{context_str}"),
+            role: tpt_llm_client_core::Role::User,
+            content: Some(format!("{input}{context_str}")),
+            tool_calls: None,
+            tool_call_id: None,
         });
 
         let request = ChatRequest {
@@ -107,15 +109,18 @@ fn main() {
             temperature: None,
             max_tokens: None,
             stream: None,
+            tools: None,
         };
 
         match rt.block_on(client.send(&request)) {
             Ok(response) => {
-                let reply = &response.choices[0].message.content;
+                let reply = response.choices[0].message.text();
                 println!("Assistant: {reply}");
                 history.push(Message {
-                    role: Role::Assistant,
-                    content: reply.clone(),
+                    role: tpt_llm_client_core::Role::Assistant,
+                    content: Some(reply.to_string()),
+                    tool_calls: None,
+                    tool_call_id: None,
                 });
                 memory.insert(MemoryEntry::new(
                     &format!("assistant: {reply}"),

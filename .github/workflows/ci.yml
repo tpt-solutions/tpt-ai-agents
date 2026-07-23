@@ -73,7 +73,7 @@ jobs:
           for dir in tpt-llm-client-core tpt-vector-store-traits tpt-rag-pipeline \
                      tpt-tool-use-macros tpt-prompt-template tpt-onnx-runtime-utils \
                      tpt-tokenizers-fast tpt-agent-memory tpt-eval-harness tpt-ai-mock-server \
-                     tpt-vector-store-qdrant tpt-vector-store-pgvector; do
+                     tpt-vector-store-qdrant tpt-vector-store-pgvector tpt-embeddings-client; do
             if [ -d "$dir" ]; then
               echo "Checking $dir --no-default-features"
               cargo check -p "$dir" --no-default-features
@@ -168,7 +168,7 @@ jobs:
           for dir in tpt-llm-client-core tpt-vector-store-traits tpt-rag-pipeline \
                      tpt-tool-use-macros tpt-prompt-template tpt-onnx-runtime-utils \
                      tpt-tokenizers-fast tpt-agent-memory tpt-eval-harness tpt-ai-mock-server \
-                     tpt-vector-store-qdrant tpt-vector-store-pgvector; do
+                     tpt-vector-store-qdrant tpt-vector-store-pgvector tpt-embeddings-client; do
             if [ -d "$dir" ]; then
               echo "Semver checks for $dir"
               cargo semver-checks check-release -p "$dir" || true
@@ -190,7 +190,7 @@ jobs:
           for dir in tpt-llm-client-core tpt-vector-store-traits tpt-rag-pipeline \
                      tpt-tool-use-macros tpt-prompt-template tpt-onnx-runtime-utils \
                      tpt-tokenizers-fast tpt-agent-memory tpt-eval-harness tpt-ai-mock-server \
-                     tpt-vector-store-qdrant tpt-vector-store-pgvector; do
+                     tpt-vector-store-qdrant tpt-vector-store-pgvector tpt-embeddings-client; do
             if [ -d "$dir" ]; then
               echo "Public API diff for $dir"
               cargo public-api diff --allow-unrecognized-crate "$dir@$(cargo metadata --format-version 1 2>/dev/null | jq -r ".packages[] | select(.name==\"$dir\") | .version")" 2>/dev/null || echo "No previous version on crates.io for $dir, skipping"
@@ -209,7 +209,7 @@ jobs:
           for dir in tpt-llm-client-core tpt-vector-store-traits tpt-rag-pipeline \
                      tpt-tool-use-macros tpt-prompt-template tpt-onnx-runtime-utils \
                      tpt-tokenizers-fast tpt-agent-memory tpt-eval-harness tpt-ai-mock-server \
-                     tpt-vector-store-qdrant tpt-vector-store-pgvector; do
+                     tpt-vector-store-qdrant tpt-vector-store-pgvector tpt-embeddings-client; do
             if [ -d "$dir" ]; then
               echo "Dry run publish for $dir"
               cargo publish --dry-run -p "$dir"

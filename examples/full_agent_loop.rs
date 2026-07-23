@@ -11,16 +11,15 @@
 //!
 //! Run with `cargo run --example full_agent_loop`.
 //!
-//! Note: this mock server only returns pre-recorded responses — it does not
-//! implement real tool-calling semantics (e.g. OpenAI's `tool_calls` field).
-//! To keep the demo self-contained, the mock's first-turn reply embeds the
-//! tool call as `CALL_TOOL:<json args>` in the message content, and this
-//! example parses that convention. A real provider would use its native
-//! tool-calling response shape instead.
+//! This example demonstrates the real tool-calling flow:
+//! 1. Send a request with tool definitions
+//! 2. Receive a response with `tool_calls` (structured, not text hacks)
+//! 3. Execute the tool via `#[tool]`-generated dispatch
+//! 4. Send the result back as a `role: "tool"` message
 
 use tpt_agent_memory::{MemoryEntry, MemoryStore, SearchQuery};
 use tpt_ai_mock_server::{MockServer, RecordedResponse};
-use tpt_llm_client_core::{ChatRequest, Message, Role, SseClient};
+use tpt_llm_client_core::{ChatRequest, Message, SseClient, Tool, ToolFunction};
 use tpt_rag_pipeline::{ChunkConfig, Chunker};
 use tpt_tool_use_macros::tool;
 
@@ -51,24 +50,45 @@ async fn main() {
         if context.len() == 1 { "y" } else { "ies" }
     );
 
-    // 2. Start a mock LLM server and queue two turns: a tool-call request,
-    //    then a final answer that references the tool result.
+    // 2. Start a mock LLM server and queue two turns:
+    //    Turn 1: model responds with a real tool_calls structure
+    //    Turn 2: model gives a final answer referencing the tool result
+    let tool_call_response = serde_json::json!({
+        "id": "turn_1",
+        "choices": [{
+            "index": 0,
+            "message": {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [{
+                    "index": 0,
+                    "id": "call_abc123",
+                    "type": "function",
+                    "function": {
+                        "name": "get_weather",
+                        "arguments": "{\"location\":\"Austin\"}"
+                    }
+                }]
+            },
+            "finish_reason": "tool_calls"
+        }]
+    });
+    let final_answer = r#"{"id":"turn_2","choices":[{"index":0,"message":{"role":"assistant","content":"It's 72F and sunny in Austin, consistent with our office policy of checking before outdoor events. You're clear to schedule it."},"finish_reason":"stop"}]}"#;
+
     let mut server = MockServer::new();
     server.add_response(RecordedResponse::json_response(
-        r#"{"id":"turn_1","choices":[{"index":0,"message":{"role":"assistant","content":"CALL_TOOL:{\"location\":\"Austin\"}"},"finish_reason":"stop"}]}"#,
+        &tool_call_response.to_string(),
     ));
-    server.add_response(RecordedResponse::json_response(
-        r#"{"id":"turn_2","choices":[{"index":0,"message":{"role":"assistant","content":"It's 72F and sunny in Austin, consistent with our office policy of checking before outdoor events. You're clear to schedule it."},"finish_reason":"stop"}]}"#,
-    ));
+    server.add_response(RecordedResponse::json_response(final_answer));
     let addr = server.start().await.unwrap();
 
     // 3. Talk to it via the real client crate, exactly as with a live provider.
     let client = SseClient::openai(&format!("http://{addr}/v1"), "sk-mock");
-    let mut conversation = vec![Message {
-        role: Role::User,
-        content: "Is it a good day for an outdoor team event in Austin?".into(),
-    }];
+    let mut conversation = vec![Message::user(
+        "Is it a good day for an outdoor team event in Austin?",
+    )];
 
+    // 4. Send the request WITH tool definitions.
     let turn_1 = client
         .send(&ChatRequest {
             model: "gpt-4o-mini".into(),
@@ -76,39 +96,49 @@ async fn main() {
             temperature: None,
             max_tokens: None,
             stream: None,
+            tools: Some(vec![Tool {
+                tool_type: "function".into(),
+                function: ToolFunction {
+                    name: "get_weather".into(),
+                    description: Some("Get the current weather for a location".into()),
+                    parameters: serde_json::from_str(get_weather_schema()).unwrap(),
+                },
+            }]),
         })
         .await
         .expect("turn 1 request failed");
-    let reply = &turn_1.choices[0].message.content;
-    println!("Model (turn 1): {reply}");
 
-    // 4. Detect and execute the tool call via the macro-generated dispatcher.
-    let tool_result = if let Some(args_json) = reply.strip_prefix("CALL_TOOL:") {
-        let result = get_weather_call(args_json).expect("invalid tool arguments");
+    // 5. Check if the model requested a tool call (structured, not text hack).
+    let choice = &turn_1.choices[0];
+    if let Some(ref tool_calls) = choice.message.tool_calls {
+        let tool_call = &tool_calls[0];
+        println!(
+            "Model requested tool: {} with args: {}",
+            tool_call.function.name, tool_call.function.arguments
+        );
+
+        // 6. Execute the tool via the macro-generated dispatcher.
+        let result =
+            get_weather_call(&tool_call.function.arguments).expect("invalid tool arguments");
         println!("Tool result: {result}");
-        result
-    } else {
-        String::new()
-    };
 
-    // 5. Send the tool result back for a final, grounded answer.
-    conversation.push(Message {
-        role: Role::Assistant,
-        content: reply.clone(),
-    });
-    conversation.push(Message {
-        role: Role::User,
-        content: format!("Tool result: {tool_result}"),
-    });
-    let turn_2 = client
-        .send(&ChatRequest {
-            model: "gpt-4o-mini".into(),
-            messages: conversation,
-            temperature: None,
-            max_tokens: None,
-            stream: None,
-        })
-        .await
-        .expect("turn 2 request failed");
-    println!("Model (turn 2): {}", turn_2.choices[0].message.content);
+        // 7. Send the tool result back as a role:"tool" message.
+        conversation.push(choice.message.clone());
+        conversation.push(Message::tool(&tool_call.id, &result));
+
+        let turn_2 = client
+            .send(&ChatRequest {
+                model: "gpt-4o-mini".into(),
+                messages: conversation,
+                temperature: None,
+                max_tokens: None,
+                stream: None,
+                tools: None,
+            })
+            .await
+            .expect("turn 2 request failed");
+        println!("Model (turn 2): {}", turn_2.choices[0].message.text());
+    } else {
+        println!("Model: {}", choice.message.text());
+    }
 }

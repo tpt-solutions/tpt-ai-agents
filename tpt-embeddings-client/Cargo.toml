@@ -1,0 +1,38 @@
+[package]
+name = "tpt-embeddings-client"
+description = "Unified async client for OpenAI, Cohere, and custom embedding APIs"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+documentation = "https://docs.rs/tpt-embeddings-client"
+readme = "README.md"
+keywords = ["embeddings", "openai", "cohere", "rag", "async"]
+categories = ["asynchronous", "web-programming"]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+async-trait.workspace = true
+
+[dependencies.tokio]
+workspace = true
+optional = true
+features = ["rt", "time"]
+
+[dependencies.reqwest]
+version = "0.12"
+optional = true
+default-features = false
+features = ["json"]
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+
+[features]
+default = ["std", "json-sse"]
+std = ["dep:tokio", "dep:reqwest"]
+async = ["std"]
+json-sse = []

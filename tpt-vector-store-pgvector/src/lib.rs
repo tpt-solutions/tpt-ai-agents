@@ -61,6 +61,7 @@ pub use client::PgVectorStore;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::string::ToString;
 
     #[test]
     fn test_error_display() {

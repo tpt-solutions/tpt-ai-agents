@@ -1,6 +1,9 @@
 //! Real HTTP transport for `SseClient` (requires the `std` feature).
 
-use crate::response::{Choice, Delta, StreamChoice, Usage};
+use crate::response::{
+    Choice, Delta, StreamChoice, ToolCall, ToolCallDelta, ToolCallFunction, ToolCallFunctionDelta,
+    Usage,
+};
 use crate::{
     ChatRequest, ChatResponse, Error, Message, Provider, RetryConfig, Role, SseParser, StreamChunk,
 };
@@ -67,25 +70,51 @@ pub(crate) fn build_body(provider: Provider, request: &ChatRequest, stream: bool
             let messages: Vec<Value> = request
                 .messages
                 .iter()
-                .map(|m| serde_json::json!({"role": role_str(m.role), "content": m.content}))
+                .map(|m| {
+                    let mut msg = serde_json::json!({
+                        "role": role_str(m.role),
+                        "content": m.content.as_deref().unwrap_or(""),
+                    });
+                    if let Some(ref tool_calls) = m.tool_calls {
+                        msg["tool_calls"] =
+                            serde_json::to_value(tool_calls).unwrap_or(Value::Array(alloc::vec![]));
+                    }
+                    if let Some(ref tool_call_id) = m.tool_call_id {
+                        msg["tool_call_id"] = Value::String(tool_call_id.clone());
+                    }
+                    msg
+                })
                 .collect();
-            serde_json::json!({
+            let mut body = serde_json::json!({
                 "model": request.model,
                 "messages": messages,
                 "stream": stream,
-            })
+            });
+            if let Some(ref tools) = request.tools {
+                body["tools"] = serde_json::to_value(tools).unwrap_or(Value::Array(alloc::vec![]));
+            }
+            body
         }
         Provider::Anthropic => {
             let system: Option<String> = request
                 .messages
                 .iter()
                 .find(|m| m.role == Role::System)
-                .map(|m| m.content.clone());
+                .and_then(|m| m.content.clone());
             let messages: Vec<Value> = request
                 .messages
                 .iter()
                 .filter(|m| m.role != Role::System)
-                .map(|m| serde_json::json!({"role": role_str(m.role), "content": m.content}))
+                .map(|m| {
+                    let mut msg = serde_json::json!({
+                        "role": role_str(m.role),
+                        "content": m.content.as_deref().unwrap_or(""),
+                    });
+                    if let Some(ref tool_call_id) = m.tool_call_id {
+                        msg["tool_use_id"] = Value::String(tool_call_id.clone());
+                    }
+                    msg
+                })
                 .collect();
             let mut body = serde_json::json!({
                 "model": request.model,
@@ -99,6 +128,9 @@ pub(crate) fn build_body(provider: Provider, request: &ChatRequest, stream: bool
             if let Some(temperature) = request.temperature {
                 body["temperature"] = serde_json::json!(temperature);
             }
+            if let Some(ref tools) = request.tools {
+                body["tools"] = serde_json::to_value(tools).unwrap_or(Value::Array(alloc::vec![]));
+            }
             body
         }
     }
@@ -109,6 +141,7 @@ fn role_str(role: Role) -> &'static str {
         Role::System => "system",
         Role::User => "user",
         Role::Assistant => "assistant",
+        Role::Tool => "tool",
     }
 }
 
@@ -175,7 +208,9 @@ fn parse_response(provider: Provider, text: &str) -> Result<ChatResponse, Error>
             #[derive(Deserialize)]
             struct OllamaMessage {
                 #[allow(dead_code)]
+                #[serde(default)]
                 role: String,
+                #[serde(default)]
                 content: String,
             }
             #[derive(Deserialize)]
@@ -195,7 +230,9 @@ fn parse_response(provider: Provider, text: &str) -> Result<ChatResponse, Error>
                     index: 0,
                     message: Message {
                         role: Role::Assistant,
-                        content: parsed.message.content,
+                        content: Some(parsed.message.content),
+                        tool_calls: None,
+                        tool_call_id: None,
                     },
                     finish_reason: parsed.done_reason,
                 }],
@@ -209,8 +246,16 @@ fn parse_response(provider: Provider, text: &str) -> Result<ChatResponse, Error>
         Provider::Anthropic => {
             #[derive(Deserialize)]
             struct ContentBlock {
+                #[serde(rename = "type")]
+                block_type: String,
                 #[serde(default)]
                 text: String,
+                #[serde(default)]
+                id: String,
+                #[serde(default)]
+                name: String,
+                #[serde(default)]
+                input: Value,
             }
             #[derive(Deserialize)]
             struct AnthropicUsage {
@@ -228,19 +273,46 @@ fn parse_response(provider: Provider, text: &str) -> Result<ChatResponse, Error>
                 usage: AnthropicUsage,
             }
             let parsed: AnthropicResponse = serde_json::from_str(text)?;
-            let content = parsed
-                .content
-                .into_iter()
-                .map(|b| b.text)
-                .collect::<Vec<_>>()
-                .join("");
+
+            let mut text_parts = alloc::vec![];
+            let mut tool_calls = alloc::vec![];
+            for (idx, block) in parsed.content.into_iter().enumerate() {
+                match block.block_type.as_str() {
+                    "text" => text_parts.push(block.text),
+                    "tool_use" => {
+                        let arguments = serde_json::to_string(&block.input)
+                            .unwrap_or_else(|_| String::from("{}"));
+                        tool_calls.push(ToolCall {
+                            index: idx as u32,
+                            id: block.id,
+                            tool_type: String::from("function"),
+                            function: ToolCallFunction {
+                                name: block.name,
+                                arguments,
+                            },
+                        });
+                    }
+                    _ => {}
+                }
+            }
+            let content = text_parts.join("");
             Ok(ChatResponse {
                 id: parsed.id,
                 choices: alloc::vec![Choice {
                     index: 0,
                     message: Message {
                         role: Role::Assistant,
-                        content,
+                        content: if content.is_empty() {
+                            None
+                        } else {
+                            Some(content)
+                        },
+                        tool_calls: if tool_calls.is_empty() {
+                            None
+                        } else {
+                            Some(tool_calls)
+                        },
+                        tool_call_id: None,
                     },
                     finish_reason: parsed.stop_reason,
                 }],
@@ -445,6 +517,7 @@ fn parse_ollama_stream_line(line: &str) -> Result<Option<StreamChunk>, Error> {
                 } else {
                     Some(content)
                 },
+                tool_calls: None,
             },
             finish_reason: if parsed.done {
                 Some(parsed.done_reason.unwrap_or_else(|| String::from("stop")))
@@ -466,22 +539,85 @@ fn parse_stream_event(provider: Provider, data: &str) -> Result<Option<StreamChu
             let event_type = value.get("type").and_then(Value::as_str).unwrap_or("");
             match event_type {
                 "content_block_delta" => {
-                    let text = value
-                        .get("delta")
-                        .and_then(|d| d.get("text"))
-                        .and_then(Value::as_str)
-                        .unwrap_or("");
-                    Ok(Some(StreamChunk {
-                        id: String::from("anthropic"),
-                        choices: alloc::vec![StreamChoice {
-                            index: 0,
-                            delta: Delta {
-                                role: None,
-                                content: Some(String::from(text)),
-                            },
-                            finish_reason: None,
-                        }],
-                    }))
+                    let delta_obj = value.get("delta").cloned().unwrap_or(Value::Null);
+                    // Check if this is a text delta or a tool_use input_json_delta
+                    if let Some(text) = delta_obj.get("text").and_then(Value::as_str) {
+                        Ok(Some(StreamChunk {
+                            id: String::from("anthropic"),
+                            choices: alloc::vec![StreamChoice {
+                                index: 0,
+                                delta: Delta {
+                                    role: None,
+                                    content: Some(String::from(text)),
+                                    tool_calls: None,
+                                },
+                                finish_reason: None,
+                            }],
+                        }))
+                    } else if delta_obj.get("type").and_then(Value::as_str)
+                        == Some("input_json_delta")
+                    {
+                        // Anthropic tool_use streaming: partial JSON arguments
+                        let partial_json = delta_obj
+                            .get("partial_json")
+                            .and_then(Value::as_str)
+                            .unwrap_or("");
+                        let content_block_index =
+                            value.get("index").and_then(Value::as_u64).unwrap_or(0) as u32;
+                        Ok(Some(StreamChunk {
+                            id: String::from("anthropic"),
+                            choices: alloc::vec![StreamChoice {
+                                index: 0,
+                                delta: Delta {
+                                    role: None,
+                                    content: None,
+                                    tool_calls: Some(alloc::vec![ToolCallDelta {
+                                        index: content_block_index,
+                                        id: None,
+                                        tool_type: None,
+                                        function: Some(ToolCallFunctionDelta {
+                                            name: None,
+                                            arguments: Some(String::from(partial_json)),
+                                        }),
+                                    }]),
+                                },
+                                finish_reason: None,
+                            }],
+                        }))
+                    } else {
+                        Ok(None)
+                    }
+                }
+                "content_block_start" => {
+                    let block = value.get("content_block").cloned().unwrap_or(Value::Null);
+                    let block_type = block.get("type").and_then(Value::as_str).unwrap_or("");
+                    if block_type == "tool_use" {
+                        let id = block.get("id").and_then(Value::as_str).unwrap_or("");
+                        let name = block.get("name").and_then(Value::as_str).unwrap_or("");
+                        let index = value.get("index").and_then(Value::as_u64).unwrap_or(0) as u32;
+                        Ok(Some(StreamChunk {
+                            id: String::from("anthropic"),
+                            choices: alloc::vec![StreamChoice {
+                                index: 0,
+                                delta: Delta {
+                                    role: None,
+                                    content: None,
+                                    tool_calls: Some(alloc::vec![ToolCallDelta {
+                                        index,
+                                        id: Some(String::from(id)),
+                                        tool_type: Some(String::from("function")),
+                                        function: Some(ToolCallFunctionDelta {
+                                            name: Some(String::from(name)),
+                                            arguments: None,
+                                        }),
+                                    }]),
+                                },
+                                finish_reason: None,
+                            }],
+                        }))
+                    } else {
+                        Ok(None)
+                    }
                 }
                 "message_delta" => {
                     let stop_reason = value
@@ -495,7 +631,8 @@ fn parse_stream_event(provider: Provider, data: &str) -> Result<Option<StreamChu
                             index: 0,
                             delta: Delta {
                                 role: None,
-                                content: None
+                                content: None,
+                                tool_calls: None,
                             },
                             finish_reason: stop_reason,
                         }],
@@ -511,25 +648,16 @@ fn parse_stream_event(provider: Provider, data: &str) -> Result<Option<StreamChu
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::request::{ChatRequest, Message, Role};
-    use alloc::vec;
+    use crate::request::{ChatRequest, Message};
 
     fn sample_request() -> ChatRequest {
         ChatRequest {
             model: String::from("test-model"),
-            messages: vec![
-                Message {
-                    role: Role::System,
-                    content: String::from("be nice"),
-                },
-                Message {
-                    role: Role::User,
-                    content: String::from("hello"),
-                },
-            ],
+            messages: alloc::vec![Message::system("be nice"), Message::user("hello"),],
             temperature: Some(0.5),
             max_tokens: Some(128),
             stream: None,
+            tools: None,
         }
     }
 
@@ -579,7 +707,7 @@ mod tests {
     fn test_parse_response_openai() {
         let text = r#"{"id":"abc","choices":[{"index":0,"message":{"role":"assistant","content":"hi"},"finish_reason":"stop"}],"usage":{"prompt_tokens":1,"completion_tokens":2,"total_tokens":3}}"#;
         let resp = parse_response(Provider::OpenAi, text).unwrap();
-        assert_eq!(resp.choices[0].message.content, "hi");
+        assert_eq!(resp.choices[0].message.content.as_deref(), Some("hi"));
         assert_eq!(resp.usage.unwrap().total_tokens, 3);
     }
 
@@ -587,7 +715,7 @@ mod tests {
     fn test_parse_response_anthropic() {
         let text = r#"{"id":"msg_1","content":[{"type":"text","text":"hi there"}],"stop_reason":"end_turn","usage":{"input_tokens":10,"output_tokens":5}}"#;
         let resp = parse_response(Provider::Anthropic, text).unwrap();
-        assert_eq!(resp.choices[0].message.content, "hi there");
+        assert_eq!(resp.choices[0].message.content.as_deref(), Some("hi there"));
         assert_eq!(resp.choices[0].finish_reason.as_deref(), Some("end_turn"));
         assert_eq!(resp.usage.unwrap().total_tokens, 15);
     }
@@ -596,8 +724,23 @@ mod tests {
     fn test_parse_response_ollama() {
         let text = r#"{"model":"llama3","message":{"role":"assistant","content":"hi"},"done":true,"done_reason":"stop","prompt_eval_count":4,"eval_count":6}"#;
         let resp = parse_response(Provider::Ollama, text).unwrap();
-        assert_eq!(resp.choices[0].message.content, "hi");
+        assert_eq!(resp.choices[0].message.content.as_deref(), Some("hi"));
         assert_eq!(resp.usage.unwrap().total_tokens, 10);
+    }
+
+    #[test]
+    fn test_parse_response_anthropic_tool_use() {
+        let text = r#"{"id":"msg_1","content":[{"type":"text","text":"Let me check"},{"type":"tool_use","id":"toolu_abc","name":"get_weather","input":{"location":"Austin"}}],"stop_reason":"end_turn","usage":{"input_tokens":10,"output_tokens":5}}"#;
+        let resp = parse_response(Provider::Anthropic, text).unwrap();
+        assert_eq!(
+            resp.choices[0].message.content.as_deref(),
+            Some("Let me check")
+        );
+        let tool_calls = resp.choices[0].message.tool_calls.as_ref().unwrap();
+        assert_eq!(tool_calls.len(), 1);
+        assert_eq!(tool_calls[0].id, "toolu_abc");
+        assert_eq!(tool_calls[0].function.name, "get_weather");
+        assert!(tool_calls[0].function.arguments.contains("Austin"));
     }
 
     #[test]
@@ -694,5 +837,100 @@ mod tests {
 
         assert!(result.is_err());
         assert_eq!(attempts.get(), 1);
+    }
+
+    #[test]
+    fn test_parse_stream_event_openai_tool_call() {
+        let data = r#"{"id":"chatcmpl-123","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_abc","type":"function","function":{"name":"get_weather","arguments":""}}]},"finish_reason":null}]}"#;
+        let chunk = parse_stream_event(Provider::OpenAi, data).unwrap().unwrap();
+        let tool_calls = chunk.choices[0].delta.tool_calls.as_ref().unwrap();
+        assert_eq!(tool_calls.len(), 1);
+        assert_eq!(tool_calls[0].id.as_deref(), Some("call_abc"));
+        assert_eq!(tool_calls[0].tool_type.as_deref(), Some("function"));
+        assert_eq!(
+            tool_calls[0].function.as_ref().unwrap().name.as_deref(),
+            Some("get_weather")
+        );
+        assert_eq!(
+            tool_calls[0]
+                .function
+                .as_ref()
+                .unwrap()
+                .arguments
+                .as_deref(),
+            Some("")
+        );
+    }
+
+    #[test]
+    fn test_parse_stream_event_openai_tool_call_argument_delta() {
+        let data = r#"{"id":"chatcmpl-123","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\"loc"}}]},"finish_reason":null}]}"#;
+        let chunk = parse_stream_event(Provider::OpenAi, data).unwrap().unwrap();
+        let tool_calls = chunk.choices[0].delta.tool_calls.as_ref().unwrap();
+        assert_eq!(tool_calls[0].index, 0);
+        assert!(tool_calls[0].id.is_none());
+        assert_eq!(
+            tool_calls[0]
+                .function
+                .as_ref()
+                .unwrap()
+                .arguments
+                .as_deref(),
+            Some("{\"loc")
+        );
+    }
+
+    #[test]
+    fn test_parse_stream_event_anthropic_tool_use_start() {
+        let data = r#"{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_123","name":"get_weather"}}"#;
+        let chunk = parse_stream_event(Provider::Anthropic, data)
+            .unwrap()
+            .unwrap();
+        let tool_calls = chunk.choices[0].delta.tool_calls.as_ref().unwrap();
+        assert_eq!(tool_calls[0].id.as_deref(), Some("toolu_123"));
+        assert_eq!(
+            tool_calls[0].function.as_ref().unwrap().name.as_deref(),
+            Some("get_weather")
+        );
+    }
+
+    #[test]
+    fn test_parse_stream_event_anthropic_tool_use_input_delta() {
+        let data = r#"{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"loc"}}"#;
+        let chunk = parse_stream_event(Provider::Anthropic, data)
+            .unwrap()
+            .unwrap();
+        let tool_calls = chunk.choices[0].delta.tool_calls.as_ref().unwrap();
+        assert_eq!(
+            tool_calls[0]
+                .function
+                .as_ref()
+                .unwrap()
+                .arguments
+                .as_deref(),
+            Some("{\"loc")
+        );
+    }
+
+    #[test]
+    fn test_build_body_openai_includes_tools() {
+        let request = ChatRequest {
+            model: String::from("gpt-4o"),
+            messages: alloc::vec![Message::user("hi")],
+            temperature: None,
+            max_tokens: None,
+            stream: None,
+            tools: Some(alloc::vec![crate::response::Tool {
+                tool_type: String::from("function"),
+                function: crate::response::ToolFunction {
+                    name: String::from("get_weather"),
+                    description: None,
+                    parameters: serde_json::json!({}),
+                },
+            }]),
+        };
+        let body = build_body(Provider::OpenAi, &request, false);
+        assert!(body["tools"].is_array());
+        assert_eq!(body["tools"][0]["function"]["name"], "get_weather");
     }
 }

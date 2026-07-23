@@ -4,7 +4,7 @@ Common tasks mapped to the specific example files and crates involved.
 
 ## Build a RAG chatbot
 
-**Crates:** `tpt-rag-pipeline`, `tpt-agent-memory`, `tpt-llm-client-core`, `tpt-tool-use-macros`
+**Crates:** `tpt-rag-pipeline`, `tpt-agent-memory`, `tpt-llm-client-core`, `tpt-tool-use-macros`, `tpt-embeddings-client`
 
 1. **Chunk your documents** with `tpt-rag-pipeline`:
    ```rust
@@ -13,7 +13,18 @@ Common tasks mapped to the specific example files and crates involved.
        .chunk(&document).unwrap();
    ```
 
-2. **Store and retrieve context** with `tpt-agent-memory`:
+2. **Generate embeddings** with `tpt-embeddings-client`:
+   ```rust
+   use tpt_embeddings_client::{OpenAiEmbeddings, EmbeddingRequest, EmbeddingsClient};
+   let client = OpenAiEmbeddings::new("https://api.openai.com/v1", "sk-...");
+   let response = client.embed(&EmbeddingRequest {
+       model: "text-embedding-3-small".into(),
+       inputs: chunks.iter().map(|c| c.text.clone()).collect(),
+       dimensions: None,
+   }).await.unwrap();
+   ```
+
+3. **Store and retrieve context** with `tpt-agent-memory`:
    ```rust
    use tpt_agent_memory::{MemoryStore, MemoryEntry, SearchQuery};
    let mut store = MemoryStore::new();
@@ -67,7 +78,7 @@ Common tasks mapped to the specific example files and crates involved.
    | Backend | Crate | Status |
    |---------|-------|--------|
    | Qdrant | `tpt-vector-store-qdrant` | Production-ready |
-   | pgvector | `tpt-vector-store-pgvector` | Coming soon |
+    | pgvector | `tpt-vector-store-pgvector` | Beta (compiles, not yet published) |
    | Milvus | `tpt-vector-store-milvus` | Coming soon |
 
 2. Wire it into `tpt-agent-memory` via `VectorBackedMemoryStore`:

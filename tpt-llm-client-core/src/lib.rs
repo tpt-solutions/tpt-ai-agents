@@ -14,16 +14,17 @@
 //! # Example
 //!
 //! ```no_run
-//! use tpt_llm_client_core::{SseClient, ChatRequest, Message, Role};
+//! use tpt_llm_client_core::{SseClient, ChatRequest, Message};
 //!
 //! # async fn run() {
 //! let client = SseClient::openai("https://api.openai.com/v1", "sk-...");
 //! let request = ChatRequest {
 //!     model: "gpt-4o-mini".into(),
-//!     messages: vec![Message { role: Role::User, content: "Hello".into() }],
+//!     messages: vec![Message::user("Hello")],
 //!     temperature: None,
 //!     max_tokens: None,
 //!     stream: None,
+//!     tools: None,
 //! };
 //! let response = client.send(&request).await.unwrap();
 //! println!("{:?}", response);
@@ -43,12 +44,17 @@ mod http;
 mod parser;
 mod request;
 mod response;
+#[cfg(feature = "std")]
+pub mod usage;
 
 pub use error::Error;
 pub use event::SseEvent;
 pub use parser::SseParser;
 pub use request::{ChatRequest, Message, Role};
-pub use response::{ChatResponse, StreamChunk};
+pub use response::{
+    ChatResponse, StreamChunk, Tool, ToolCall, ToolCallDelta, ToolCallFunction,
+    ToolCallFunctionDelta, ToolFunction, Usage,
+};
 
 /// SSE streaming client for LLM APIs.
 #[cfg(feature = "std")]

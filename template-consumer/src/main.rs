@@ -1,5 +1,5 @@
 use tpt_agent_memory::{MemoryEntry, MemoryStore, SearchQuery};
-use tpt_llm_client_core::{ChatRequest, Message, Role, SseClient};
+use tpt_llm_client_core::{ChatRequest, Message, SseClient};
 use tpt_tool_use_macros::tool;
 
 #[tool]
@@ -32,10 +32,7 @@ async fn main() {
         )
     };
 
-    history.push(Message {
-        role: Role::User,
-        content: format!("Hello!{context_str}"),
-    });
+    history.push(Message::user(&format!("Hello!{context_str}")));
 
     match client.send(&ChatRequest {
         model: "gpt-4o-mini".into(),
@@ -43,8 +40,9 @@ async fn main() {
         temperature: None,
         max_tokens: None,
         stream: None,
+        tools: None,
     }).await {
-        Ok(response) => println!("{}", response.choices[0].message.content),
+        Ok(response) => println!("{}", response.choices[0].message.text()),
         Err(e) => eprintln!("Error: {e}"),
     }
 }
