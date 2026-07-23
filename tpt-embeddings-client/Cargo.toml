@@ -23,7 +23,7 @@ optional = true
 features = ["rt", "time"]
 
 [dependencies.reqwest]
-version = "0.12"
+version = "0.13"
 optional = true
 default-features = false
 features = ["json"]

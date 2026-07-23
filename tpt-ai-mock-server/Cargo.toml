@@ -18,7 +18,7 @@ tokio = { workspace = true, features = ["rt", "net", "io-util", "time", "macros"
 parking_lot = { version = "0.12", optional = true }
 
 [dev-dependencies]
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.13", features = ["json"] }
 
 [features]
 default = ["std", "json-sse"]
