@@ -1,7 +1,7 @@
 [package]
 name = "tpt-prompt-template"
 description = "Safe, typed templating for prompts with compile-time validation"
-version = "0.1.0"
+version = "0.1.1"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

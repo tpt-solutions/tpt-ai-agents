@@ -95,4 +95,21 @@ mod tests {
         let event = parser.feed("event: message\ndata: hello\n\n").unwrap();
         assert_eq!(event.event_type.as_deref(), Some("message"));
     }
+
+    #[test]
+    fn test_multiple_events_in_one_feed_call() {
+        // A single network read can carry several complete SSE events.
+        // `feed` only ever returns the first; the rest stay buffered and
+        // must be drained via subsequent `feed("")` calls.
+        let mut parser = SseParser::new();
+        let first = parser
+            .feed("data: one\n\ndata: two\n\ndata: three\n\n")
+            .unwrap();
+        assert_eq!(first.data, "one");
+        let second = parser.feed("").unwrap();
+        assert_eq!(second.data, "two");
+        let third = parser.feed("").unwrap();
+        assert_eq!(third.data, "three");
+        assert!(parser.feed("").is_none());
+    }
 }

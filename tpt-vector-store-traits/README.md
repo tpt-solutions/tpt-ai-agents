@@ -7,13 +7,14 @@ Standardized async `VectorStore` trait for implementing vector database
 backend adapters.
 
 **When to use this crate:** you want your code to be portable across
-vector database backends. This crate ships the trait only — **no Qdrant,
-Milvus, or pgvector adapter is included**; implement `VectorStore` for your
-own client (see [`examples/qdrant_adapter.rs`](../examples/qdrant_adapter.rs)
-in the workspace root for the shape of a real adapter). Once implemented,
-`tpt-agent-memory`'s `VectorBackedMemoryStore` (behind its `vector-store`
-feature) can use it directly for embedding search at scale, in place of
-that crate's default in-memory cosine-similarity scan.
+vector database backends. This crate ships the trait only — no adapter is
+included here. For Qdrant, use [`tpt-vector-store-qdrant`](../tpt-vector-store-qdrant),
+a real adapter built on this trait. For Milvus, pgvector, or anything else,
+implement `VectorStore` for your own client (see the example below for the
+shape). Once implemented, `tpt-agent-memory`'s `VectorBackedMemoryStore`
+(behind its `vector-store` feature) can use it directly for embedding
+search at scale, in place of that crate's default in-memory
+cosine-similarity scan.
 
 ## Features
 
@@ -22,7 +23,7 @@ that crate's default in-memory cosine-similarity scan.
 
 ## Usage
 
-```rust,ignore
+```text
 use tpt_vector_store_traits::{VectorStore, Query, SearchResult, CosineDistance};
 use async_trait::async_trait;
 

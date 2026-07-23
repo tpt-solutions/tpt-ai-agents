@@ -15,12 +15,13 @@ categories = ["development-tools", "testing"]
 [dependencies]
 serde_json.workspace = true
 tokio = { workspace = true, features = ["rt", "net", "io-util", "time", "macros"] }
+parking_lot = { version = "0.12", optional = true }
 
 [dev-dependencies]
 reqwest = { version = "0.12", features = ["json"] }
 
 [features]
 default = ["std", "json-sse"]
-std = []
+std = ["dep:parking_lot"]
 async = ["std"]
 json-sse = []

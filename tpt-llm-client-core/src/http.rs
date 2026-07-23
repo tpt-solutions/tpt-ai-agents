@@ -348,6 +348,27 @@ pub(crate) async fn stream(
                     }
                 }
 
+                // A single network read can carry more than one complete SSE
+                // event (common for small/local responses); `feed` only
+                // returns the first complete event per call and buffers the
+                // rest internally. Drain any already-buffered event before
+                // blocking on the network again, so trailing events aren't
+                // stranded once the server closes the connection.
+                if let Some(event) = parser.feed("") {
+                    match parse_stream_event(provider, event.data_str()) {
+                        Ok(Some(chunk)) => {
+                            return Some((
+                                Ok(chunk),
+                                (byte_stream, parser, line_buf, provider, done),
+                            ))
+                        }
+                        Ok(None) => continue,
+                        Err(e) => {
+                            return Some((Err(e), (byte_stream, parser, line_buf, provider, true)))
+                        }
+                    }
+                }
+
                 match byte_stream.next().await {
                     Some(Ok(bytes)) => {
                         let text = String::from_utf8_lossy(&bytes).to_string();

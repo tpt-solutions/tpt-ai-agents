@@ -33,3 +33,53 @@ impl PromptTemplate {
         &self.template
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_render_substitutes_all_variables() {
+        let template = PromptTemplate::new("Hello, {{name}}! Topic: {{topic}}.").unwrap();
+        let rendered = template.render(&[("name", "Ada"), ("topic", "Rust")]);
+        assert_eq!(rendered, "Hello, Ada! Topic: Rust.");
+    }
+
+    #[test]
+    fn test_render_leaves_missing_variable_unresolved() {
+        let template = PromptTemplate::new("Hello, {{name}}!").unwrap();
+        let rendered = template.render(&[]);
+        assert_eq!(rendered, "Hello, {{name}}!");
+    }
+
+    #[test]
+    fn test_render_ignores_unknown_extra_vars() {
+        let template = PromptTemplate::new("Hello, {{name}}!").unwrap();
+        let rendered = template.render(&[("name", "Ada"), ("unused", "x")]);
+        assert_eq!(rendered, "Hello, Ada!");
+    }
+
+    #[test]
+    fn test_render_with_no_variables_returns_template_unchanged() {
+        let template = PromptTemplate::new("Just plain text.").unwrap();
+        assert_eq!(template.render(&[]), "Just plain text.");
+    }
+
+    #[test]
+    fn test_new_rejects_malformed_template() {
+        assert!(PromptTemplate::new("Hello {{}}").is_err());
+    }
+
+    #[test]
+    fn test_variables_reports_declared_names() {
+        let template = PromptTemplate::new("{{a}} and {{b}}").unwrap();
+        assert_eq!(template.variables(), &["a", "b"]);
+    }
+
+    #[test]
+    fn test_render_substitutes_unicode_values() {
+        let template = PromptTemplate::new("Hi {{name}}").unwrap();
+        let rendered = template.render(&[("name", "日本語 😀")]);
+        assert_eq!(rendered, "Hi 日本語 😀");
+    }
+}

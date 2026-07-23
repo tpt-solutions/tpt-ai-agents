@@ -5,7 +5,9 @@ use alloc::format;
 #[cfg(feature = "std")]
 use alloc::string::{String, ToString};
 #[cfg(feature = "std")]
-use std::sync::{Arc, Mutex};
+use parking_lot::Mutex;
+#[cfg(feature = "std")]
+use std::sync::Arc;
 #[cfg(feature = "std")]
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 
@@ -111,10 +113,7 @@ async fn handle_connection(
         return write_response(&mut stream, 400, "application/json", &msg).await;
     }
 
-    let response = router
-        .lock()
-        .expect("mock server router lock poisoned")
-        .take(&path);
+    let response = router.lock().take(&path);
     match response {
         None => {
             write_response(

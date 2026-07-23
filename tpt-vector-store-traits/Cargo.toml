@@ -1,7 +1,7 @@
 [package]
 name = "tpt-vector-store-traits"
 description = "Standardized async VectorStore trait for implementing vector database backend adapters (traits only, no built-in adapters)"
-version = "0.1.0"
+version = "0.1.1"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

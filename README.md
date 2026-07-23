@@ -15,6 +15,7 @@ See [GETTING_STARTED.md](GETTING_STARTED.md) for a quickstart and
 |-------|---------|----------|-------------|------|
 | `tpt-llm-client-core` | [![crates.io](https://img.shields.io/crates/v/tpt-llm-client-core.svg)](https://crates.io/crates/tpt-llm-client-core) | **Production** | Unified streaming HTTP/SSE client for OpenAI, Anthropic, Ollama with automatic retry/backoff | 0 |
 | `tpt-vector-store-traits` | [![crates.io](https://img.shields.io/crates/v/tpt-vector-store-traits.svg)](https://crates.io/crates/tpt-vector-store-traits) | **Beta** | Standardized async traits for Qdrant, Milvus, pgvector | 0 |
+| `tpt-vector-store-qdrant` | [![crates.io](https://img.shields.io/crates/v/tpt-vector-store-qdrant.svg)](https://crates.io/crates/tpt-vector-store-qdrant) | **Beta** | Real `VectorStore` adapter backed by Qdrant | 1 |
 | `tpt-rag-pipeline` | [![crates.io](https://img.shields.io/crates/v/tpt-rag-pipeline.svg)](https://crates.io/crates/tpt-rag-pipeline) | **Beta** | Chunking, embedding batching, context-window management | 1 |
 | `tpt-tool-use-macros` | [![crates.io](https://img.shields.io/crates/v/tpt-tool-use-macros.svg)](https://crates.io/crates/tpt-tool-use-macros) | **Production** | Proc macros exposing Rust functions as LLM tools | 0 |
 | `tpt-prompt-template` | [![crates.io](https://img.shields.io/crates/v/tpt-prompt-template.svg)](https://crates.io/crates/tpt-prompt-template) | **Production** | Safe, typed templating for prompts | 0 |
@@ -34,7 +35,7 @@ Publish by tier, waiting for crates.io propagation between tiers:
 
 **Tier 0** (no internal deps): `tpt-tokenizers-fast`, `tpt-llm-client-core`, `tpt-vector-store-traits`, `tpt-prompt-template`, `tpt-tool-use-macros`, `tpt-onnx-runtime-utils`, `tpt-ai-mock-server`
 
-**Tier 1** (depend on Tier 0): `tpt-rag-pipeline`, `tpt-agent-memory`, `tpt-eval-harness`
+**Tier 1** (depend on Tier 0): `tpt-rag-pipeline`, `tpt-agent-memory`, `tpt-eval-harness`, `tpt-vector-store-qdrant`
 
 Verified via `cargo publish --dry-run` for every crate (2026-07-23): all of
 Tier 0 packages and dry-run-uploads cleanly on its own now that

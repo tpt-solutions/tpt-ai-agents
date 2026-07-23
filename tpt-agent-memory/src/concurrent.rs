@@ -2,7 +2,7 @@
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
-use std::sync::RwLock;
+use parking_lot::RwLock;
 
 use crate::{MemoryEntry, MemoryStore, SearchQuery};
 
@@ -22,24 +22,16 @@ impl ConcurrentMemoryStore {
     }
 
     pub fn insert(&self, entry: MemoryEntry) {
-        self.inner
-            .write()
-            .expect("ConcurrentMemoryStore lock poisoned")
-            .insert(entry);
+        self.inner.write().insert(entry);
     }
 
     pub fn get(&self, id: &str) -> Option<MemoryEntry> {
-        self.inner
-            .read()
-            .expect("ConcurrentMemoryStore lock poisoned")
-            .get(id)
-            .cloned()
+        self.inner.read().get(id).cloned()
     }
 
     pub fn search(&self, query: &SearchQuery) -> Vec<MemoryEntry> {
         self.inner
             .read()
-            .expect("ConcurrentMemoryStore lock poisoned")
             .search(query)
             .into_iter()
             .cloned()
@@ -47,24 +39,15 @@ impl ConcurrentMemoryStore {
     }
 
     pub fn len(&self) -> usize {
-        self.inner
-            .read()
-            .expect("ConcurrentMemoryStore lock poisoned")
-            .len()
+        self.inner.read().len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.inner
-            .read()
-            .expect("ConcurrentMemoryStore lock poisoned")
-            .is_empty()
+        self.inner.read().is_empty()
     }
 
     pub fn clear(&self) {
-        self.inner
-            .write()
-            .expect("ConcurrentMemoryStore lock poisoned")
-            .clear();
+        self.inner.write().clear();
     }
 }
 

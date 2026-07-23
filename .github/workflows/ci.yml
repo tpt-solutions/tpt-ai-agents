@@ -70,7 +70,8 @@ jobs:
         run: |
           for dir in tpt-llm-client-core tpt-vector-store-traits tpt-rag-pipeline \
                      tpt-tool-use-macros tpt-prompt-template tpt-onnx-runtime-utils \
-                     tpt-tokenizers-fast tpt-agent-memory tpt-eval-harness tpt-ai-mock-server; do
+                     tpt-tokenizers-fast tpt-agent-memory tpt-eval-harness tpt-ai-mock-server \
+                     tpt-vector-store-qdrant; do
             if [ -d "$dir" ]; then
               echo "Checking $dir --no-default-features"
               cargo check -p "$dir" --no-default-features
@@ -161,7 +162,8 @@ jobs:
         run: |
           for dir in tpt-llm-client-core tpt-vector-store-traits tpt-rag-pipeline \
                      tpt-tool-use-macros tpt-prompt-template tpt-onnx-runtime-utils \
-                     tpt-tokenizers-fast tpt-agent-memory tpt-eval-harness tpt-ai-mock-server; do
+                     tpt-tokenizers-fast tpt-agent-memory tpt-eval-harness tpt-ai-mock-server \
+                     tpt-vector-store-qdrant; do
             if [ -d "$dir" ]; then
               echo "Dry run publish for $dir"
               cargo publish --dry-run -p "$dir"

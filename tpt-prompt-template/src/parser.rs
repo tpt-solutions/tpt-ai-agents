@@ -78,4 +78,60 @@ mod tests {
         parser.parse("Hello world").unwrap();
         assert!(parser.variables().is_empty());
     }
+
+    #[test]
+    fn test_empty_string_template() {
+        let mut parser = TemplateParser::new();
+        parser.parse("").unwrap();
+        assert!(parser.variables().is_empty());
+    }
+
+    #[test]
+    fn test_empty_variable_name_errors() {
+        let mut parser = TemplateParser::new();
+        let err = parser.parse("Hello {{}}").unwrap_err();
+        assert!(matches!(err, Error::UnclosedVariable { .. }));
+    }
+
+    #[test]
+    fn test_invalid_variable_name_errors() {
+        let mut parser = TemplateParser::new();
+        let err = parser.parse("Hello {{first name}}").unwrap_err();
+        assert!(matches!(err, Error::InvalidVariableName(_)));
+    }
+
+    #[test]
+    fn test_variable_name_with_underscore_is_valid() {
+        let mut parser = TemplateParser::new();
+        parser.parse("{{first_name}}").unwrap();
+        assert_eq!(parser.variables(), &["first_name"]);
+    }
+
+    #[test]
+    fn test_adjacent_variables() {
+        let mut parser = TemplateParser::new();
+        parser.parse("{{a}}{{b}}").unwrap();
+        assert_eq!(parser.variables(), &["a", "b"]);
+    }
+
+    #[test]
+    fn test_repeated_variable_is_captured_each_time() {
+        let mut parser = TemplateParser::new();
+        parser.parse("{{name}} and {{name}} again").unwrap();
+        assert_eq!(parser.variables(), &["name", "name"]);
+    }
+
+    #[test]
+    fn test_single_unmatched_brace_is_not_a_variable() {
+        let mut parser = TemplateParser::new();
+        parser.parse("just a { brace").unwrap();
+        assert!(parser.variables().is_empty());
+    }
+
+    #[test]
+    fn test_unicode_around_variable() {
+        let mut parser = TemplateParser::new();
+        parser.parse("こんにちは {{name}} さん 😀").unwrap();
+        assert_eq!(parser.variables(), &["name"]);
+    }
 }

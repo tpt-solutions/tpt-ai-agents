@@ -1,0 +1,41 @@
+[package]
+name = "tpt-vector-store-qdrant"
+description = "Qdrant adapter for tpt-vector-store-traits::VectorStore"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+documentation = "https://docs.rs/tpt-vector-store-qdrant"
+readme = "README.md"
+keywords = ["vector", "embedding", "qdrant", "database", "rag"]
+categories = ["database", "asynchronous"]
+
+[dependencies]
+async-trait.workspace = true
+serde_json.workspace = true
+
+[dependencies.tpt-vector-store-traits]
+path = "../tpt-vector-store-traits"
+version = "0.1.0"
+
+[dependencies.tokio]
+workspace = true
+optional = true
+features = ["rt"]
+
+[dependencies.qdrant-client]
+version = "1"
+optional = true
+default-features = false
+features = ["serde"]
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+
+[features]
+default = ["std", "json-sse"]
+std = ["dep:tokio", "dep:qdrant-client", "tpt-vector-store-traits/std"]
+async = ["std"]
+json-sse = ["tpt-vector-store-traits/json-sse"]

@@ -13,7 +13,9 @@ dependencies (see the root [README.md](../README.md) for the full list):
   `tpt-rag-pipeline` (optionally uses `tpt-tokenizers-fast`,
   `tpt-vector-store-traits`, `tpt-llm-client-core` behind its `full`
   feature), `tpt-agent-memory` (optionally uses `tpt-vector-store-traits`),
-  `tpt-eval-harness` (optionally uses `tpt-llm-client-core`).
+  `tpt-eval-harness` (optionally uses `tpt-llm-client-core`),
+  `tpt-vector-store-qdrant` (implements `tpt-vector-store-traits::VectorStore`
+  against a real Qdrant instance).
 
 Tiers exist for the crates.io publish order (Tier 0 must land first so Tier
 1's path dependencies resolve), not for a strict layering rule — a Tier 0
@@ -58,10 +60,10 @@ chunk-and-retrieve piece.
 `tpt-tokenizers-fast` and `tpt-onnx-runtime-utils` are used off this main
 path — for counting/limiting tokens before a request, or for running a
 local model instead of a hosted one. `tpt-vector-store-traits` defines the
-async `VectorStore` trait a real vector database backend implements; no
-concrete adapter (Qdrant, pgvector, etc.) ships in that crate itself — see
-[`examples/qdrant_adapter.rs`](../examples/qdrant_adapter.rs) for a
-reference implementation shape. `tpt-agent-memory`'s default
+async `VectorStore` trait a real vector database backend implements;
+`tpt-vector-store-qdrant` is a real adapter against Qdrant — for other
+backends (pgvector, Milvus, etc.), implement the trait for your own client
+following that crate as a reference. `tpt-agent-memory`'s default
 `MemoryStore::search` is still a self-contained cosine-similarity scan over
 in-memory embeddings (fine up to a few thousand entries); its
 `vector-store`-feature-gated `VectorBackedMemoryStore` instead upserts

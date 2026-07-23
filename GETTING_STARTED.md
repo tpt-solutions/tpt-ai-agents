@@ -58,7 +58,11 @@ cargo run --example full_agent_loop
 ```
 
 For a narrower example of just chunking + memory, see
-[`examples/rag_memory.rs`](examples/rag_memory.rs).
+[`examples/rag_memory.rs`](examples/rag_memory.rs), for streaming responses
+see [`examples/streaming_chat.rs`](examples/streaming_chat.rs), and for RAG
+backed by a real vector database see
+[`examples/rag_with_qdrant.rs`](examples/rag_with_qdrant.rs) (needs a
+running Qdrant instance — see that file's module doc comment).
 
 ## Talking to a real provider
 
@@ -96,7 +100,8 @@ with exponential backoff (3 attempts by default) — tune this via
 | Give the model callable Rust functions | `tpt-tool-use-macros` |
 | Store/search conversation state across turns | `tpt-agent-memory` |
 | Chunk documents for retrieval | `tpt-rag-pipeline` |
-| Standardize against a vector DB (traits only — no adapters shipped yet) | `tpt-vector-store-traits` |
+| Standardize against a vector DB (traits only) | `tpt-vector-store-traits` |
+| Search embeddings in a real Qdrant instance | `tpt-vector-store-qdrant` |
 | Write typed, validated prompt templates | `tpt-prompt-template` |
 | Tokenize text without pulling in a large runtime | `tpt-tokenizers-fast` |
 | Run a local ONNX model | `tpt-onnx-runtime-utils` |

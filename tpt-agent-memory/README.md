@@ -40,16 +40,22 @@ let results = store.search(&SearchQuery::new("").with_embedding(vec![0.1, 0.9]))
 ```
 
 With the `vector-store` feature, swap `MemoryStore` for `VectorBackedMemoryStore<S>`
-where `S` implements `tpt_vector_store_traits::VectorStore` (see
-[`examples/qdrant_adapter.rs`](../examples/qdrant_adapter.rs) for a reference
-adapter shape) to scale semantic search past what a linear scan can handle:
+where `S` implements `tpt_vector_store_traits::VectorStore` — see
+[`tpt-vector-store-qdrant`](../tpt-vector-store-qdrant) for a real adapter —
+to scale semantic search past what a linear scan can handle:
 
-```rust,ignore
+```rust,no_run
 use tpt_agent_memory::{MemoryEntry, VectorBackedMemoryStore};
+use tpt_vector_store_qdrant::QdrantVectorStore;
 
-let mut store = VectorBackedMemoryStore::new(my_qdrant_adapter);
+# async fn run() -> Result<(), Box<dyn std::error::Error>> {
+let backend = QdrantVectorStore::new("http://localhost:6334", "memory").await?;
+let mut store = VectorBackedMemoryStore::new(backend);
 store.insert(MemoryEntry::new("likes minimal UIs", &["pref"]).with_embedding(vec![0.1, 0.9])).await?;
 let results = store.search_semantic(vec![0.1, 0.9], 10).await?;
+# let _ = results;
+# Ok(())
+# }
 ```
 
 See [GETTING_STARTED.md](../GETTING_STARTED.md) for a full agent-loop example.

@@ -17,6 +17,7 @@ async-trait.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio = { workspace = true, features = ["rt", "sync", "macros"] }
+parking_lot = { version = "0.12", optional = true }
 
 [dependencies.tpt-vector-store-traits]
 path = "../tpt-vector-store-traits"
@@ -28,7 +29,7 @@ tokio = { workspace = true, features = ["rt", "macros", "rt-multi-thread"] }
 
 [features]
 default = ["std", "json-sse"]
-std = ["tpt-vector-store-traits?/std"]
+std = ["dep:parking_lot", "tpt-vector-store-traits?/std"]
 async = ["std"]
 json-sse = ["tpt-vector-store-traits?/json-sse"]
 # Enables `VectorBackedMemoryStore`, which delegates embedding search to a

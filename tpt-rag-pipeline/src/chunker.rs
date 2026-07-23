@@ -69,4 +69,57 @@ mod tests {
         let chunks = chunker.chunk("one two three four five").unwrap();
         assert_eq!(chunks.len(), 3);
     }
+
+    #[test]
+    fn test_empty_input_produces_no_chunks() {
+        let chunker = Chunker::new(ChunkConfig::new(3, 0));
+        let chunks = chunker.chunk("").unwrap();
+        assert!(chunks.is_empty());
+    }
+
+    #[test]
+    fn test_whitespace_only_input_produces_no_chunks() {
+        let chunker = Chunker::new(ChunkConfig::new(3, 0));
+        let chunks = chunker.chunk("   \n\t  ").unwrap();
+        assert!(chunks.is_empty());
+    }
+
+    #[test]
+    fn test_input_smaller_than_max_tokens_yields_single_chunk() {
+        let chunker = Chunker::new(ChunkConfig::new(50, 5));
+        let chunks = chunker.chunk("just three words").unwrap();
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0].text, "just three words");
+    }
+
+    #[test]
+    fn test_unicode_words_are_not_split_mid_codepoint() {
+        let chunker = Chunker::new(ChunkConfig::new(2, 0));
+        let chunks = chunker.chunk("héllo wörld 日本語 emoji😀here").unwrap();
+        let rejoined: alloc::string::String = chunks
+            .iter()
+            .flat_map(|c| c.text.split_whitespace())
+            .collect::<alloc::vec::Vec<_>>()
+            .join(" ");
+        assert_eq!(rejoined, "héllo wörld 日本語 emoji😀here");
+    }
+
+    #[test]
+    fn test_overlap_greater_than_or_equal_to_max_tokens_still_terminates() {
+        // step = max_tokens.saturating_sub(overlap), floored to 1 by
+        // `core::cmp::max(step, 1)` — this must never loop forever or panic,
+        // even when overlap >= max_tokens.
+        let chunker = Chunker::new(ChunkConfig::new(2, 5));
+        let chunks = chunker.chunk("one two three four five").unwrap();
+        assert_eq!(chunks.len(), 5);
+    }
+
+    #[test]
+    fn test_zero_max_tokens_terminates_without_panicking() {
+        let chunker = Chunker::new(ChunkConfig::new(0, 0));
+        let chunks = chunker.chunk("one two three").unwrap();
+        // Every chunk is empty (end == start), but the walk still finishes.
+        assert_eq!(chunks.len(), 3);
+        assert!(chunks.iter().all(|c| c.text.is_empty()));
+    }
 }
