@@ -36,7 +36,7 @@ mod store;
 mod traits;
 
 pub use error::Error;
-pub use query::{Filter, Query};
+pub use query::{Filter, FilterCondition, FilterOp, FilterValue, Query};
 pub use result::SearchResult;
 pub use store::{CollectionInfo, VectorStore};
 

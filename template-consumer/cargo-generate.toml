@@ -1,0 +1,10 @@
+[template]
+description = "Scaffold a consumer project wired to tpt-ai-agents crates"
+exclude = []
+
+[template.placeholders]
+project_name = "my-agent-app"
+project_description = "A minimal agent application using tpt-ai-agents"
+
+[pre-scripts]
+post-render = ["cargo fmt"]

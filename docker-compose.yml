@@ -1,0 +1,23 @@
+# Local development services for tpt-ai-agents examples.
+#
+# Start only Qdrant (needed by examples/rag_with_qdrant.rs):
+#   docker compose up -d qdrant
+#
+# Stop and remove:
+#   docker compose down -v
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"   # HTTP REST API
+      - "6334:6334"   # gRPC (used by tpt-vector-store-qdrant)
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__GRPC_PORT: "6334"
+      QDRANT__SERVICE__HTTP_PORT: "6333"
+    restart: unless-stopped
+
+volumes:
+  qdrant_data:

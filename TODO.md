@@ -241,3 +241,51 @@ Innovative / stretch:
 - [x] `examples/agent_cli.rs` — runnable chat loop over the agent-loop example
 - [x] `criterion` benchmarks for `tpt-tokenizers-fast` and the SSE parser in
       `tpt-llm-client-core`
+
+## 5. Platform review follow-ups (2026-07-23)
+
+Gaps / missing features:
+- [ ] `tpt-vector-store-pgvector` adapter crate — traits/docs advertise
+      pgvector support but only Qdrant has a real adapter; likely the
+      widest-reach backend to add next given how common Postgres is
+- [ ] `tpt-vector-store-milvus` adapter crate — same gap as pgvector, lower
+      priority (more niche deployment)
+- [ ] Embedding-provider client crate (e.g. `tpt-embeddings-client`) for
+      OpenAI/Cohere/local embedding calls — currently every consumer
+      hand-rolls this to feed `tpt-rag-pipeline`/`tpt-agent-memory`
+- [ ] Audit whether `tpt-tool-use-macros` output is actually wired end-to-end
+      into an LLM function-calling response parser anywhere besides the
+      example, or if that loop still requires manual glue
+- [ ] `cargo semver-checks` in CI (still unchecked from §1/§3 — close before
+      or immediately after first publish)
+- [ ] Post-publish: confirm docs.rs builds succeed for every crate, all
+      feature combos (still unchecked from §3)
+
+Innovative additions:
+- [ ] `tpt-agent-graph` (or similar) — a thin state-machine/DAG orchestration
+      crate tying `llm-client-core` + `tool-use-macros` + `agent-memory`
+      together as a reusable "tier 2" crate; today that composition only
+      exists as `examples/full_agent_loop.rs`, not something consumers can
+      depend on
+- [ ] Streaming tool-call support — parse partial tool-call argument deltas
+      as emitted by OpenAI/Anthropic streaming APIs, not just complete JSON
+- [ ] Shared cost/token-usage tracking hook in `tpt-llm-client-core` so
+      `tpt-eval-harness` and app code don't each reimplement usage
+      accounting
+
+Usability / automation:
+- [ ] Second `cargo-generate` template (or template flag) that scaffolds a
+      *consumer* project (minimal binary wired to 2-3 published crates)
+      rather than only scaffolding new internal workspace crates
+- [ ] `docker-compose.yml` (or header-comment instructions) for spinning up
+      Qdrant locally, referenced from `examples/rag_with_qdrant.rs` and
+      `examples/qdrant_adapter.rs`
+- [ ] Scheduled CI job running `cargo public-api`/`cargo semver-checks`
+      diffed against the last published version (post-v0.1) to catch
+      accidental breaking changes automatically
+
+Adoption speed:
+- [ ] `docs/COOKBOOK.md` (or `examples/README.md` index) mapping common
+      tasks ("build a RAG chatbot," "add tool calling to an existing
+      agent," "swap in a different vector store") to the specific example
+      file and crates involved

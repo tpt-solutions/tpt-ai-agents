@@ -6,8 +6,10 @@
 //! database in this workspace. Start one locally with:
 //!
 //! ```sh
-//! docker run -p 6334:6334 qdrant/qdrant
+//! docker compose up -d qdrant
 //! ```
+//!
+//! (see the workspace root `docker-compose.yml`)
 //!
 //! and create a collection named `example_docs` with a 3-dimensional
 //! vector (matching the toy embeddings below) before running this example:

@@ -1,0 +1,42 @@
+[package]
+name = "tpt-vector-store-pgvector"
+description = "PostgreSQL/pgvector adapter for tpt-vector-store-traits::VectorStore"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+documentation = "https://docs.rs/tpt-vector-store-pgvector"
+readme = "README.md"
+keywords = ["vector", "embedding", "pgvector", "postgres", "database"]
+categories = ["database", "asynchronous"]
+
+[dependencies]
+async-trait.workspace = true
+serde_json.workspace = true
+
+[dependencies.tpt-vector-store-traits]
+path = "../tpt-vector-store-traits"
+version = "0.1.0"
+
+[dependencies.sqlx]
+version = "0.9"
+optional = true
+default-features = false
+features = ["runtime-tokio", "tls-rustls", "postgres", "json"]
+
+[dependencies.pgvector]
+version = "0.4"
+optional = true
+features = ["sqlx"]
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+serde_json.workspace = true
+
+[features]
+default = ["std", "json-sse"]
+std = ["dep:sqlx", "dep:pgvector", "tpt-vector-store-traits/std"]
+async = ["std"]
+json-sse = ["tpt-vector-store-traits/json-sse"]

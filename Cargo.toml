@@ -23,6 +23,7 @@ members = [
     "tpt-eval-harness",
     "tpt-ai-mock-server",
     "tpt-vector-store-qdrant",
+    "tpt-vector-store-pgvector",
 ]
 
 [workspace.package]

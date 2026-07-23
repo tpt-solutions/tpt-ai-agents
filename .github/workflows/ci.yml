@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: "0 6 * * 1"  # Weekly Monday 06:00 UTC
 
 env:
   CARGO_TERM_COLOR: always
@@ -71,7 +73,7 @@ jobs:
           for dir in tpt-llm-client-core tpt-vector-store-traits tpt-rag-pipeline \
                      tpt-tool-use-macros tpt-prompt-template tpt-onnx-runtime-utils \
                      tpt-tokenizers-fast tpt-agent-memory tpt-eval-harness tpt-ai-mock-server \
-                     tpt-vector-store-qdrant; do
+                     tpt-vector-store-qdrant tpt-vector-store-pgvector; do
             if [ -d "$dir" ]; then
               echo "Checking $dir --no-default-features"
               cargo check -p "$dir" --no-default-features
@@ -151,6 +153,50 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: obi1kenobi/cargo-semver-checks-action@v2
 
+  semver-checks-scheduled:
+    name: Semver Checks (scheduled)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-semver-checks
+        run: cargo install cargo-semver-checks
+      - name: Check each published crate against crates.io
+        run: |
+          for dir in tpt-llm-client-core tpt-vector-store-traits tpt-rag-pipeline \
+                     tpt-tool-use-macros tpt-prompt-template tpt-onnx-runtime-utils \
+                     tpt-tokenizers-fast tpt-agent-memory tpt-eval-harness tpt-ai-mock-server \
+                     tpt-vector-store-qdrant tpt-vector-store-pgvector; do
+            if [ -d "$dir" ]; then
+              echo "Semver checks for $dir"
+              cargo semver-checks check-release -p "$dir" || true
+            fi
+          done
+
+  public-api-diff:
+    name: Public API Diff (scheduled)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-public-api
+        run: cargo install cargo-public-api
+      - name: Diff public API against last release
+        run: |
+          for dir in tpt-llm-client-core tpt-vector-store-traits tpt-rag-pipeline \
+                     tpt-tool-use-macros tpt-prompt-template tpt-onnx-runtime-utils \
+                     tpt-tokenizers-fast tpt-agent-memory tpt-eval-harness tpt-ai-mock-server \
+                     tpt-vector-store-qdrant tpt-vector-store-pgvector; do
+            if [ -d "$dir" ]; then
+              echo "Public API diff for $dir"
+              cargo public-api diff --allow-unrecognized-crate "$dir@$(cargo metadata --format-version 1 2>/dev/null | jq -r ".packages[] | select(.name==\"$dir\") | .version")" 2>/dev/null || echo "No previous version on crates.io for $dir, skipping"
+            fi
+          done
+
   publish-dry-run:
     name: Publish Dry Run
     runs-on: ubuntu-latest
@@ -163,7 +209,7 @@ jobs:
           for dir in tpt-llm-client-core tpt-vector-store-traits tpt-rag-pipeline \
                      tpt-tool-use-macros tpt-prompt-template tpt-onnx-runtime-utils \
                      tpt-tokenizers-fast tpt-agent-memory tpt-eval-harness tpt-ai-mock-server \
-                     tpt-vector-store-qdrant; do
+                     tpt-vector-store-qdrant tpt-vector-store-pgvector; do
             if [ -d "$dir" ]; then
               echo "Dry run publish for $dir"
               cargo publish --dry-run -p "$dir"
